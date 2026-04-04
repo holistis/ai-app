@@ -17,7 +17,6 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
   if (!isUnauthorized) return;
 
-  // Clerk handles redirect automatically via <SignIn />
   window.location.href = "/sign-in";
 };
 
@@ -59,8 +58,7 @@ createRoot(document.getElementById("root")!).render(
     publishableKey={clerkPublishableKey}
     signInUrl="/sign-in"
     signUpUrl="/sign-up"
-    afterSignInUrl="/"
-    afterSignUpUrl="/"
+    signInFallbackRedirectUrl="/"
   >
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
