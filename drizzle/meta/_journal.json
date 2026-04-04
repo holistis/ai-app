@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1774952276431,
+      "tag": "0000_mature_wind_dancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1774962566567,
+      "tag": "0001_overrated_ken_ellis",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774987361860,
+      "tag": "0002_flowery_warbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1775075729129,
+      "tag": "0003_bitter_dreaming_celestial",
+      "breakpoints": true
+    }
+  ]
+}

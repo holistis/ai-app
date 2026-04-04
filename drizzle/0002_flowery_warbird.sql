@@ -1,0 +1,2 @@
+ALTER TABLE `payments` MODIFY COLUMN `paymentType` enum('inzicht_rapport','full_report','ai_coach_monthly') NOT NULL;--> statement-breakpoint
+ALTER TABLE `reports` MODIFY COLUMN `reportType` enum('inzicht_rapport','full_report') NOT NULL;
