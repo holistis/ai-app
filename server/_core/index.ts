@@ -103,16 +103,53 @@ async function startServer() {
       }
 
       const report = reportData[0];
-      if (!report.pdfUrl) {
-        console.log(`[PDF-Download] Report ${reportId} has no pdfUrl stored`);
-        return res.status(404).json({ error: "PDF not available yet - still generating" });
+
+      // Case 1: pdfUrl is base64 encoded
+      if (report.pdfUrl && report.pdfUrl.startsWith("data:application/pdf;base64,")) {
+        console.log(`[PDF-Download] Report ${reportId} - Decoding base64 PDF`);
+        try {
+          const base64Data = report.pdfUrl.replace("data:application/pdf;base64,", "");
+          const pdfBuffer = Buffer.from(base64Data, 'base64');
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename="rapport-${reportId}.pdf"`);
+          console.log(`[PDF-Download] Sending base64 PDF (${pdfBuffer.length} bytes)`);
+          return res.send(pdfBuffer);
+        } catch (error) {
+          console.error(`[PDF-Download] Base64 decode failed:`, error);
+          return res.status(500).json({ error: "Failed to decode PDF" });
+        }
       }
 
-      console.log(`[PDF-Download] User ${user.id} downloading report ${reportId}`);
-      console.log(`[PDF-Download] Redirecting to: ${report.pdfUrl}`);
-      
-      // Redirect to S3/CDN URL - browser handles download
-      return res.redirect(report.pdfUrl);
+      // Case 2: pdfUrl is HTTP URL (redirect to S3/CDN)
+      if (report.pdfUrl && report.pdfUrl.startsWith("http")) {
+        console.log(`[PDF-Download] Report ${reportId} - Redirecting to HTTP URL`);
+        return res.redirect(report.pdfUrl);
+      }
+
+      // Case 3: No pdfUrl - generate on the fly
+      if (!report.pdfUrl) {
+        console.log(`[PDF-Download] Report ${reportId} - Generating PDF on the fly`);
+        try {
+          const { buildReportHTML, generatePDFBuffer } = await import("../_core/pdfGenerator");
+          const html = buildReportHTML({
+            title: report.title || "Rapport",
+            content: report.content || "",
+            summary: report.summary || "",
+            keyInsights: report.keyInsights ? (typeof report.keyInsights === 'string' ? JSON.parse(report.keyInsights) : report.keyInsights) : [],
+            recommendations: report.recommendations ? (typeof report.recommendations === 'string' ? JSON.parse(report.recommendations) : report.recommendations) : [],
+            protocols: report.protocols ? (typeof report.protocols === 'string' ? JSON.parse(report.protocols) : report.protocols) : {},
+            scientificReferences: report.scientificReferences ? (typeof report.scientificReferences === 'string' ? JSON.parse(report.scientificReferences) : report.scientificReferences) : [],
+          });
+          const pdfBuffer = await generatePDFBuffer(html);
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename="rapport-${reportId}.pdf"`);
+          console.log(`[PDF-Download] Sending generated PDF (${pdfBuffer.length} bytes)`);
+          return res.send(pdfBuffer);
+        } catch (error) {
+          console.error(`[PDF-Download] PDF generation failed:`, error);
+          return res.status(500).json({ error: "Failed to generate PDF" });
+        }
+      }
     } catch (error) {
       console.error("[PDF-Download] Unexpected error:", error);
       return res.status(500).json({ error: "Internal server error" });
