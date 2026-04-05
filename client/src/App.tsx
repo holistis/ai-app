@@ -1,4 +1,3 @@
-// client/src/App.tsx
 import React from "react";
 import { Route, Switch } from "wouter";
 import { ClerkProvider } from "@clerk/clerk-react";
@@ -20,17 +19,20 @@ const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 function RouterComponent() {
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/sign-in"} component={SignInPage} />
-      <Route path={"/sign-in/sso-callback"} component={SignInPage} />
-      <Route path={"/sign-up"} component={SignUpPage} />
-      <Route path={"/sign-up/sso-callback"} component={SignUpPage} />
-      <Route path={"/anamnesis"} component={AnamnesisQuestionnaire} />
-      <Route path={"/rapport"} component={RapportPage} />
-      <Route path={"/admin"} component={AdminDashboard} />
-      <Route path={"/my-reports"} component={MyReports} />
-      <Route path={"/mijn-rapporten"} component={MyReports} />
-      <Route path={"/404"} component={NotFound} />
+      <Route path="/" component={Home} />
+      <Route path="/sign-in" component={SignInPage} />
+      <Route path="/sign-in/factor-one" component={SignInPage} />
+      <Route path="/sign-in/factor-two" component={SignInPage} />
+      <Route path="/sign-in/sso-callback" component={SignInPage} />
+      <Route path="/sign-up" component={SignUpPage} />
+      <Route path="/sign-up/sso-callback" component={SignUpPage} />
+      <Route path="/sign-up/verify-email-address" component={SignUpPage} />
+      <Route path="/anamnesis" component={AnamnesisQuestionnaire} />
+      <Route path="/rapport" component={RapportPage} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/my-reports" component={MyReports} />
+      <Route path="/mijn-rapporten" component={MyReports} />
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -38,10 +40,7 @@ function RouterComponent() {
 
 function App() {
   return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      navigate={(to) => window.history.pushState(null, "", to)}
-    >
+    <ClerkProvider publishableKey={clerkPubKey}>
       <ErrorBoundary>
         <ThemeProvider defaultTheme="light">
           <TooltipProvider>
