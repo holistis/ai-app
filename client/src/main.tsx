@@ -8,7 +8,7 @@ import App from "./App";
 import "./index.css";
 import React from "react";
 
-const clerkPubKey = "pk_live_XXXXXXXXXXXX";
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 const queryClient = new QueryClient({
   defaultOptions: {
