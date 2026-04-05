@@ -1,3 +1,54 @@
+Waarom ben jij beter dan ChatGPT - Manus
+Lite
+Done. ClerkProvider props updated with correct configuration.
+Export only client/src/main.tsx as a downloadable file.
+Lite
+Exporting main.tsx file.
+Lite
+Updated main.tsx file ready for download.
+File: main.tsx (2.1 KB)
+Contains:
+ClerkProvider with correct props:
+signInUrl="/sign-in"
+signUpUrl="/sign-up"
+signInFallbackRedirectUrl="/"
+publishableKey from environment variable
+main.tsx
+Code · 2.03 KB
+View all files in this task
+How was this result?
+In server/_core/email.ts, find where emails are sent and update the "from" email address to use the verified domain.
+Change any "from" address to: Holistisch AI Kliniek <info@holistischadviseur.nl>
+Also make sure the RESEND_API_KEY environment variable is used correctly.
+Edit the file directly. No explanations.
+
+als je dit hebt gedaan geef me dan 
+exporteer je alleen server/_core/email.ts en upload je die naar GitHub ter vervanging. ik wil die kunnen openen zoals je eerder hebt gedaan. meer niet 
+Lite
+Updating email.ts with verified domain and checking RESEND_API_KEY usage.
+Lite
+Updated email.ts ready for download.
+File: email.ts (17 KB)
+Changes made:
+FROM_EMAIL updated to: Holistisch AI Kliniek <info@holistischadviseur.nl>
+RESEND_API_KEY correctly used via ENV.resendApiKey or process.env.RESEND_API_KEY
+All email functions use the verified domain
+email.ts
+Code · 16.57 KB
+View all files in this task
+Task completed
+How was this result?
+Suggested follow-ups
+
+
+
+
+server
+/
+_core
+/
+email.ts
+123456789101112131415161718192021222324252627
 /**
  * Email delivery helper using Resend API
  * Sends reports and notifications to info@holistischadviseur.nl
@@ -7,9 +58,7 @@ import { ENV } from "./env";
 import { generatePDFBuffer, buildReportHTML } from "./pdfGenerator";
 
 const OWNER_EMAIL = "info@holistischadviseur.nl";
-// Use onboarding@resend.dev until holistischadviseur.nl domain is verified in Resend dashboard
-// After domain verification: change to "Holistisch AI Kliniek <noreply@holistischadviseur.nl>"
-const FROM_EMAIL = "Holistisch AI Kliniek <onboarding@resend.dev>";
+const FROM_EMAIL = "Holistisch AI Kliniek <info@holistischadviseur.nl>";
 
 interface EmailOptions {
   to: string;
