@@ -1,14 +1,11 @@
 // client/src/App.tsx
-
 import React from "react";
 import { Route, Switch } from "wouter";
 import { ClerkProvider } from "@clerk/clerk-react";
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-
 import Home from "./pages/Home";
 import AnamnesisQuestionnaire from "./pages/AnamnesisQuestionnaire";
 import RapportPage from "./pages/RapportPage";
@@ -18,7 +15,6 @@ import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import NotFound from "./pages/NotFound";
 
-// Haal Clerk Publishable Key uit environment variables
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 function RouterComponent() {
@@ -26,14 +22,15 @@ function RouterComponent() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/sign-in"} component={SignInPage} />
+      <Route path={"/sign-in/sso-callback"} component={SignInPage} />
       <Route path={"/sign-up"} component={SignUpPage} />
+      <Route path={"/sign-up/sso-callback"} component={SignUpPage} />
       <Route path={"/anamnesis"} component={AnamnesisQuestionnaire} />
       <Route path={"/rapport"} component={RapportPage} />
       <Route path={"/admin"} component={AdminDashboard} />
       <Route path={"/my-reports"} component={MyReports} />
       <Route path={"/mijn-rapporten"} component={MyReports} />
       <Route path={"/404"} component={NotFound} />
-      {/* fallback */}
       <Route component={NotFound} />
     </Switch>
   );
