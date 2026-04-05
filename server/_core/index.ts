@@ -55,6 +55,18 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   
+  // Clerk authentication middleware - validates Clerk tokens
+  app.use((req, res, next) => {
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.substring(7);
+      // Store token for context.ts to verify
+      (req as any).clerkToken = token;
+    }
+    next();
+  });
+  
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   
