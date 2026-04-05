@@ -5,7 +5,7 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "startCommand": "npm install -g serve && serve -s dist",
+    "startCommand": "npm install serve --save-dev",
     "restartPolicyMaxRetries": 5
   }
 }
