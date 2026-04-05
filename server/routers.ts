@@ -25,8 +25,9 @@ export const appRouter = router({
       return user;
     }),
     logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      // With Clerk, logout is handled on the frontend
+      // This endpoint is kept for compatibility
+      console.log(`[Auth.logout] Logout called`);
       return {
         success: true,
       } as const;
