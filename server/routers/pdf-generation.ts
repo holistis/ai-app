@@ -2,7 +2,6 @@ import { getDb } from "../db";
 import { reports } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { buildReportHTML, generatePDFBuffer } from "../_core/pdfGenerator";
-import { storagePut } from "../storage";
 
 export async function generateAndStorePDF(reportId: number, reportData: any, userId: number): Promise<string | null> {
   const mutationId = Math.random().toString(36).substring(7);
@@ -24,17 +23,13 @@ export async function generateAndStorePDF(reportId: number, reportData: any, use
     const pdfBuffer = await generatePDFBuffer(html);
     console.log(`[PDF-Gen-${mutationId}] PDF generated: ${pdfBuffer.length} bytes`);
 
-    // Step 3: Upload to S3
-    console.log(`[PDF-Gen-${mutationId}] Step 3: Uploading to S3...`);
-    const fileName = `rapport-${reportId}-${Date.now()}.pdf`;
-    const { url: pdfUrl } = await storagePut(
-      `reports/${userId}/${fileName}`,
-      pdfBuffer,
-      "application/pdf"
-    );
-    console.log(`[PDF-Gen-${mutationId}] ✅ S3 upload successful: ${pdfUrl}`);
+    // Step 3: Convert to base64
+    console.log(`[PDF-Gen-${mutationId}] Step 3: Converting to base64...`);
+    const base64String = pdfBuffer.toString('base64');
+    const pdfDataUrl = `data:application/pdf;base64,${base64String}`;
+    console.log(`[PDF-Gen-${mutationId}] Base64 encoded: ${pdfDataUrl.length} chars`);
 
-    // Step 4: Update database with pdfUrl
+    // Step 4: Update database with base64 pdfUrl
     console.log(`[PDF-Gen-${mutationId}] Step 4: Updating database...`);
     const db = await getDb();
     if (!db) throw new Error("Database not available");
@@ -42,16 +37,16 @@ export async function generateAndStorePDF(reportId: number, reportData: any, use
     await db
       .update(reports)
       .set({
-        pdfUrl: pdfUrl,
+        pdfUrl: pdfDataUrl,
         updatedAt: new Date(),
       } as any)
       .where(eq(reports.id, reportId));
     
     const totalTime = Date.now() - pdfStartTime;
     console.log(`[PDF-Gen-${mutationId}] ✅ COMPLETE - Total time: ${totalTime}ms`);
-    console.log(`[PDF-Gen-${mutationId}] PDF URL saved to database: ${pdfUrl}`);
+    console.log(`[PDF-Gen-${mutationId}] PDF base64 saved to database (${pdfDataUrl.length} chars)`);
 
-    return pdfUrl;
+    return pdfDataUrl;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : "";
