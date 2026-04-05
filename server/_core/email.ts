@@ -1,54 +1,3 @@
-Waarom ben jij beter dan ChatGPT - Manus
-Lite
-Done. ClerkProvider props updated with correct configuration.
-Export only client/src/main.tsx as a downloadable file.
-Lite
-Exporting main.tsx file.
-Lite
-Updated main.tsx file ready for download.
-File: main.tsx (2.1 KB)
-Contains:
-ClerkProvider with correct props:
-signInUrl="/sign-in"
-signUpUrl="/sign-up"
-signInFallbackRedirectUrl="/"
-publishableKey from environment variable
-main.tsx
-Code · 2.03 KB
-View all files in this task
-How was this result?
-In server/_core/email.ts, find where emails are sent and update the "from" email address to use the verified domain.
-Change any "from" address to: Holistisch AI Kliniek <info@holistischadviseur.nl>
-Also make sure the RESEND_API_KEY environment variable is used correctly.
-Edit the file directly. No explanations.
-
-als je dit hebt gedaan geef me dan 
-exporteer je alleen server/_core/email.ts en upload je die naar GitHub ter vervanging. ik wil die kunnen openen zoals je eerder hebt gedaan. meer niet 
-Lite
-Updating email.ts with verified domain and checking RESEND_API_KEY usage.
-Lite
-Updated email.ts ready for download.
-File: email.ts (17 KB)
-Changes made:
-FROM_EMAIL updated to: Holistisch AI Kliniek <info@holistischadviseur.nl>
-RESEND_API_KEY correctly used via ENV.resendApiKey or process.env.RESEND_API_KEY
-All email functions use the verified domain
-email.ts
-Code · 16.57 KB
-View all files in this task
-Task completed
-How was this result?
-Suggested follow-ups
-
-
-
-
-server
-/
-_core
-/
-email.ts
-123456789101112131415161718192021222324252627
 /**
  * Email delivery helper using Resend API
  * Sends reports and notifications to info@holistischadviseur.nl
@@ -249,7 +198,7 @@ export async function emailPatientReport(params: {
   </div>
   
   <p>Beste ${params.patientName},</p>
-  <p>Goed nieuws! Jouw persoonlijke holistische gezondheidsanalyse is klaar. Het rapport bevat een diepgaande analyse van jouw klachten, de onderliggende oorzaken, en een gepersonaliseerd herstelplan voor de komende 12 maanden.</p>
+  <p>Goed nieuws! Jouw persoonlijke holistische gezondheidsanalyse is klaar. Het rapport bevat een diepgaande analyse van jouw klachten, de onderliggende oorzaken, en een gepersonaliseerd 6-maanden herstelplan.</p>
   
   <div style="text-align: center;">
     <a href="${params.reportUrl}" class="btn">📋 Bekijk Mijn Rapport</a>
@@ -382,13 +331,13 @@ export async function sendReportEmails(params: {
     <p>Holistisch AI Kliniek</p>
   </div>
   <p style="font-size:15px">Beste <strong>${params.patientName}</strong>,</p>
-  <p style="font-size:14px;line-height:1.7;margin:15px 0">Jouw persoonlijke holistische gezondheidsanalyse is klaar! ${isFullReport ? "Het volledig rapport bevat een diepgaande analyse, onderliggende oorzaken, gepersonaliseerde protocollen en een 12-maanden herstelplan." : "Het inzicht rapport geeft je een eerste kijk op de mogelijke oorzaken van jouw klachten."}</p>
+  <p style="font-size:14px;line-height:1.7;margin:15px 0">Jouw persoonlijke holistische gezondheidsanalyse is klaar! ${isFullReport ? "Het volledig rapport bevat een diepgaande analyse, onderliggende oorzaken, gepersonaliseerde protocollen en een 6-maanden herstelplan." : "Het inzicht rapport geeft je een eerste kijk op de mogelijke oorzaken van jouw klachten."}</p>
   ${params.reportData.summary ? `<div class="highlight"><strong>Samenvatting:</strong><br>${params.reportData.summary.substring(0, 300)}${params.reportData.summary.length > 300 ? "..." : ""}</div>` : ""}
   <div style="text-align:center">
     <a href="${params.reportUrl}" class="btn">📋 Bekijk Mijn Rapport Online</a>
   </div>
   <p style="font-size:13px;color:#666;margin:15px 0">${isFullReport ? "Het volledige rapport is ook bijgevoegd als PDF in deze e-mail, zodat je het kunt opslaan en later kunt raadplegen." : "Je kunt het rapport online bekijken en als PDF downloaden."}</p>
-  ${!isFullReport ? `<div style="background:#fef3c7;border-radius:8px;padding:15px 20px;margin:20px 0;font-size:13px"><strong>🔓 Upgrade naar het Volledig Rapport (€34,95)</strong><br>Ontvang uitgebreide protocollen, een 12-maanden herstelplan en wetenschappelijke onderbouwing.</div>` : ""}
+  ${!isFullReport ? `<div style="background:#fef3c7;border-radius:8px;padding:15px 20px;margin:20px 0;font-size:13px"><strong>🔓 Upgrade naar het Volledig Rapport (€34,95)</strong><br>Ontvang uitgebreide protocollen, een 6-maanden herstelplan en wetenschappelijke onderbouwing.</div>` : ""}
   <p style="font-size:14px">Heb je vragen? Neem contact op via <a href="mailto:info@holistischadviseur.nl">info@holistischadviseur.nl</a>.</p>
   <p style="font-size:14px">Met holistische groet,<br><strong>Holistisch AI Kliniek</strong></p>
   <div class="footer">
