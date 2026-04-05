@@ -1,7 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
-import { clerkClient } from "@clerk/clerk-sdk-node";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -15,37 +14,36 @@ export async function createContext(
   let user: User | null = null;
 
   try {
-    // Get Clerk auth from request (attached by clerkMiddleware)
+    // Get Clerk auth from request (attached by middleware in index.ts)
     const auth = (opts.req as any).auth;
     const clerkUserId = auth?.userId;
 
     if (clerkUserId) {
       console.log(`[Context] Authenticated with Clerk user: ${clerkUserId}`);
       
-      // Get user from database by clerkId
+      // Step 1: Look up user in database by clerkId
       let dbUser = await db.getUserByClerkId(clerkUserId);
       
-      // If user doesn't exist, create them
+      // Step 2: If user NOT found, create new user
       if (!dbUser) {
+        console.log(`[Context] User not found, creating new user for Clerk ID: ${clerkUserId}`);
         try {
-          // Fetch Clerk user info
-          const clerkUser = await clerkClient.users.getUser(clerkUserId);
-          
-          // Create user in database with Clerk info
+          // Create user with clerkId, email "unknown", role "user"
           await db.upsertUserFromClerk(
             clerkUserId,
-            clerkUser.emailAddresses[0]?.emailAddress || "",
-            `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim()
+            "unknown",
+            ""
           );
           
-          // Fetch the created user
+          // Fetch the newly created user
           dbUser = await db.getUserByClerkId(clerkUserId);
-          console.log(`[Context] Created new user: ${clerkUserId}`);
-        } catch (error) {
-          console.error(`[Context] Failed to create user from Clerk:`, error);
+          console.log(`[Context] Successfully created new user: ${clerkUserId}`);
+        } catch (createError) {
+          console.error(`[Context] Failed to create user:`, createError);
         }
       }
       
+      // Step 3: Return user in context
       user = dbUser || null;
     }
   } catch (error) {
