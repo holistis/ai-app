@@ -51,11 +51,15 @@ async function startServer() {
     })
   );
 
-  // Frontend
+  // Frontend (BELANGRIJK FIX)
   serveStatic(app);
-  await setupVite(app, server);
 
-  // ✅ FIX: juiste poort voor Railway
+  // ❌ Vite UIT in production (dit crashte jouw app)
+  if (process.env.NODE_ENV !== "production") {
+    await setupVite(app, server);
+  }
+
+  // ✅ Railway port fix
   const PORT = process.env.PORT || 8080;
 
   server.listen(PORT, () => {
