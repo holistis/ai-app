@@ -425,7 +425,7 @@ Het rapport moet de patiënt OVERTUIGEN om de adviezen op te volgen door:
 
 Genereer een JSON-response met deze exacte structuur:
 {
-  "content": "[VERPLICHT: Minimaal 8 uitgebreide alinea's met: (1) Warme persoonlijke opening, (2) Analyse van de klachten en patronen die je ziet, (3) Correlaties en onderliggende oorzaken met uitleg WAAROM dit zo is, (4) Wat er gebeurt als niets gedaan wordt, (5) Wat er verbetert bij opvolging, (6) Uitleg over het 12-maanden herstelplan en de logica erachter, (7) Specifieke aandacht voor bloedwaarden/tekorten als relevant, (8) Motiverende afsluiting met call-to-action voor follow-up contact]",
+  "content": "[VERPLICHT: Minimaal 8 uitgebreide alinea's met: (1) Warme persoonlijke opening, (2) Analyse van de klachten en patronen die je ziet, (3) Correlaties en onderliggende oorzaken met uitleg WAAROM dit zo is, (4) Wat er gebeurt als niets gedaan wordt, (5) Wat er verbetert bij opvolging, (6"Uitleg over het 6-maanden herstelplan en de logica erachter" (7) Specifieke aandacht voor bloedwaarden/tekorten als relevant, (8) Motiverende afsluiting met call-to-action voor follow-up contact]",
   "summary": "[2-3 alinea's: kernbevindingen, belangrijkste correlaties, en de rode draad van het herstelplan]",
   "keyInsights": ["Inzicht 1 met uitleg waarom dit belangrijk is", "Inzicht 2", "Inzicht 3", "Inzicht 4", "Inzicht 5"],
   "recommendations": ["Concrete aanbeveling 1 met uitleg waarom", "Aanbeveling 2", "Aanbeveling 3", "Aanbeveling 4", "Aanbeveling 5"],
@@ -438,35 +438,25 @@ Genereer een JSON-response met deze exacte structuur:
   "scientificReferences": ["Referentie 1", "Referentie 2", "Referentie 3", "Referentie 4", "Referentie 5"]
 }
 
-## 12-MAANDEN PLAN STRUCTUUR (verwerk dit in de content)
-**Maand 1-2: Stabilisatie & Eliminatie**
+## 6-MAANDEN HERSTELPLAN STRUCTUUR (verwerk dit in de content)
+**Maand 1-2: Stabilisatiefase**
 - Verwijder triggers (suiker, gluten, alcohol, bewerkte voeding)
 - Stel slaapritme in
 - Begin met stressmanagement
 
-**Maand 3-4: Darmherstel & Opbouw**
+**Maand 3-4: Herstelfase**
 - Introduceer gefermenteerde voeding
 - Start gerichte supplementen
 - Voeg dagelijkse beweging toe
 
-**Maand 5-6: Verdieping & Optimalisatie**
+**Maand 5-6: Optimalisatiefase**
 - Evalueer bloedwaarden (indien niet gedaan)
 - Pas supplementen aan op basis van resultaten
 - Bouw intensiteit van beweging op
 
-**Maand 7-9: Consolidatie**
-- Herintroductie van geëlimineerde voedingsmiddelen (één voor één)
-- Verfijn het protocol op basis van reacties
-- Focus op lange-termijn gewoontes
-
-**Maand 10-12: Onderhoud & Preventie**
-- Onderhoudsstrategie
-- Seizoensaanpassingen
-- Langetermijn leefstijlplan
-
 ## CALL TO ACTION (verplicht in de content)
 Sluit het rapport af met een professionele uitnodiging voor een follow-up gesprek:
-"Voor persoonlijke begeleiding bij het uitvoeren van dit plan kunt u contact opnemen via info@holistischadviseur.nl. Samen bespreken we uw voortgang en passen we het plan aan op basis van uw ervaringen."
+"Dit is slechts het begin van jouw gezondheidsreis. Voor persoonlijke begeleiding bij het uitvoeren van dit 6-maanden herstelplan kunt u contact opnemen via info@holistischadviseur.nl. Samen bespreken we uw voortgang en passen we het plan aan op basis van uw ervaringen."
 
 Zorg dat het rapport:
 - Minimaal 1500 woorden is in de content sectie
