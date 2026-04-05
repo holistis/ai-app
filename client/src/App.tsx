@@ -1,9 +1,14 @@
+// client/src/App.tsx
+
+import React from "react";
+import { Route, Switch } from "wouter";
+import { ClerkProvider } from "@clerk/clerk-react";
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+
 import Home from "./pages/Home";
 import AnamnesisQuestionnaire from "./pages/AnamnesisQuestionnaire";
 import RapportPage from "./pages/RapportPage";
@@ -11,9 +16,12 @@ import { AdminDashboard } from "./pages/AdminDashboard";
 import { MyReports } from "./pages/MyReports";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
+import NotFound from "./pages/NotFound";
 
-function Router() {
-  // make sure to consider if you need authentication for certain routes
+// Haal Clerk Publishable Key uit environment variables
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+function RouterComponent() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
@@ -25,30 +33,27 @@ function Router() {
       <Route path={"/my-reports"} component={MyReports} />
       <Route path={"/mijn-rapporten"} component={MyReports} />
       <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      {/* fallback */}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
-    <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      navigate={(to) => window.history.pushState(null, "", to)}
+    >
+      <ErrorBoundary>
+        <ThemeProvider defaultTheme="light">
+          <TooltipProvider>
+            <Toaster />
+            <RouterComponent />
+          </TooltipProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </ClerkProvider>
   );
 }
 
