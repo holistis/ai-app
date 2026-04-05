@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import { Loader2, Users, FileText, CreditCard, TrendingUp, Eye, RefreshCw, ClipboardList } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
+
 
 type TabType = "overview" | "reports" | "payments" | "anamnesis" | "users";
 
@@ -32,7 +32,7 @@ export function AdminDashboard() {
   // Not authenticated - redirect to login
   if (!user) {
     console.log('[AdminDashboard] Not authenticated - redirecting to login');
-    window.location.href = getLoginUrl('/admin');
+    navigate('/sign-in');
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
