@@ -5,7 +5,20 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "startCommand": "npx serve -s dist",
-    "restartPolicyMaxRetries": 5
+    "restartPolicyMaxRetries": 5,
+    "services": [
+      {
+        "name": "frontend",
+        "path": "client",
+        "buildCommand": "npm install && npm run build",
+        "startCommand": "npx serve -s dist"
+      },
+      {
+        "name": "backend",
+        "path": "server",
+        "buildCommand": "npm install",
+        "startCommand": "node index.js"
+      }
+    ]
   }
 }
