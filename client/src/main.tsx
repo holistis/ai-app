@@ -19,30 +19,36 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
-    const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    redirectToLoginIfUnauthorized(event.query.state.error);
   }
 });
 
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
-    const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    redirectToLoginIfUnauthorized(event.mutation.state.error);
   }
 });
+
+async function getClerkToken(): Promise<string | null> {
+  try {
+    const win = window as any;
+    if (win.Clerk?.session) {
+      return await win.Clerk.session.getToken();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
-      fetch(input, init) {
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          credentials: "include",
-        });
+      async headers() {
+        const token = await getClerkToken();
+        return token ? { Authorization: `Bearer ${token}` } : {};
       },
     }),
   ],
