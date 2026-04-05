@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useLocation } from "wouter";
-import { getLoginUrl } from "@/const";
+
 import { Heart, Brain, Leaf, Zap } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -24,7 +24,7 @@ export default function Home() {
     if (isAuthenticated) {
       setLocation("/anamnesis");
     } else {
-      window.location.href = getLoginUrl();
+      setLocation('/sign-in');
     }
   };
 
@@ -49,7 +49,7 @@ export default function Home() {
                 </Button>
               </>
             ) : (
-              <Button onClick={() => window.location.href = getLoginUrl()}>
+              <Button onClick={() => setLocation('/sign-in')}>
                 Inloggen
               </Button>
             )}
