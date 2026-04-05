@@ -449,13 +449,24 @@ Pas het AI Denkmodel toe:
 3. Geef 2-4 mogelijke verklaringen, NOOIT 1 conclusie
 4. Motiveer via logica: "Als dit blijft, dan..."
 
-Schrijf 4 alinea's:
-1. Herkenning: "Dit is wat er waarschijnlijk speelt bij jou..." (persoonlijk, warm, valideer de klachten)
-2. Logica: Waarom dit gebeurt — de correlaties en onderliggende mechanismen
-3. Richting: Wat dit betekent voor herstel en een preview van het volledige rapport
-4. Motiverende afsluiting met subtiele call-to-action voor het volledige rapport
+Schrijf het rapport in EXACT deze structuur met duidelijke kopjes:
 
-Gebruik de naam ${userName}. Schrijf warm, persoonlijk en wetenschappelijk onderbouwd. ALLEEN gewone alinea's, geen JSON, geen lijsten.
+**HERKENNING**
+Maak de patiënt zich gezien en begrepen voelen. Beschrijf wat jij herkent in hun klachten. Persoonlijk, warm, valideer hun ervaringen.
+
+**DE LOGICA**
+Leg uit WAAROM dit in hun lichaam gebeurt. Toon de correlaties en verbindingen. Maak het inzichtelijk.
+
+**EERSTE INZICHTEN**
+Geef 2-3 specifieke inzichten die zij waarschijnlijk nog niet hebben gehoord. Iets wat voelt als "eindelijk, dit snap ik nu!"
+
+**WAT DIT BETEKENT**
+Wat gebeurt er als niets verandert? Maak duidelijk waarom actie nodig is.
+
+**CALL TO ACTION**
+Eindig met: "Dit is slechts het begin. Het volledige 6-maanden herstelplan bevat maand-voor-maand instructies, voeding & supplementen, leefstijlprotocollen, en aanbevolen producten & diensten. Klaar om je gezondheid terug te nemen?"
+
+Gebruik de naam ${userName}. Schrijf warm, persoonlijk en wetenschappelijk onderbouwd. ALLEEN gewone alinea's met duidelijke kopjes, geen JSON, geen lijsten.
 
 ⚠️ DISCLAIMER: Begin je rapport met deze disclaimer (één alinea, duidelijk zichtbaar):
 "Dit rapport is geen medisch advies en kan geen medische diagnose vervangen. Dit is een holistische analyse ter ondersteuning van je gezondheidsreis. Raadpleeg altijd een gekwalificeerde medische professional voor diagnose en behandeling."`,
