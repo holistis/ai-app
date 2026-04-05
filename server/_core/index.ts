@@ -2,9 +2,9 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { clerkClient } from "@clerk/clerk-sdk-node";
 
 // Clerk auth handled in context.ts
-import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -55,22 +55,27 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   
-  // Clerk authentication middleware - validates Clerk tokens
-  app.use((req, res, next) => {
-    // Extract token from Authorization header
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.substring(7);
-      // Store token for context.ts to verify
-      (req as any).clerkToken = token;
+  // Clerk authentication middleware - extract and verify token
+  app.use(async (req, res, next) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.substring(7);
+        try {
+          const decoded = await clerkClient.verifyToken(token);
+          (req as any).auth = {
+            userId: decoded.sub,
+            sessionClaims: decoded,
+          };
+        } catch (error) {
+          console.log("[Auth] Token verification failed:", error);
+        }
+      }
+    } catch (error) {
+      console.error("[Auth] Middleware error:", error);
     }
     next();
   });
-  
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
-  
-
   
   // PDF Download endpoint - Express GET route (not tRPC)
   app.get("/api/pdf/:reportId", async (req, res) => {
@@ -81,23 +86,23 @@ async function startServer() {
         return res.status(400).json({ error: "Invalid report ID" });
       }
 
-      // Authenticate user via Clerk
-      const clerkUserId = (req as any).auth?.userId;
-      if (!clerkUserId) {
-        console.log(`[PDF-Download] No Clerk user ID`);
+      // Authenticate user
+      const auth = (req as any).auth;
+      if (!auth?.userId) {
+        console.log(`[PDF-Download] Not authenticated`);
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const user = await db.getUserByClerkId(clerkUserId);
+      // Get user from database
+      const user = await db.getUserByClerkId(auth.userId);
       if (!user) {
-        console.log(`[PDF-Download] User not found in database for Clerk ID: ${clerkUserId}`);
-        return res.status(401).json({ error: "Unauthorized" });
+        console.log(`[PDF-Download] User not found for Clerk ID: ${auth.userId}`);
+        return res.status(401).json({ error: "User not found" });
       }
 
       // Fetch report from database
-      const dbInstance = await getDb();
-      if (!dbInstance) {
-        console.error(`[PDF-Download] Database not available`);
+      const dbConnection = await getDb();
+      if (!dbConnection) {
         return res.status(500).json({ error: "Database unavailable" });
       }
 
@@ -106,7 +111,7 @@ async function startServer() {
         whereConditions.push(eq(reports.userId, user.id));
       }
 
-      const reportData = await dbInstance
+      const reportData = await dbConnection
         .select()
         .from(reports)
         .where(and(...whereConditions))
@@ -170,8 +175,8 @@ async function startServer() {
       return res.status(500).json({ error: "Internal server error" });
     }
   });
-  
-  // tRPC API
+
+  // tRPC endpoint
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -179,21 +184,12 @@ async function startServer() {
       createContext,
     })
   );
-  
-  // development mode uses Vite, production mode uses static files
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  // Serve static files and Vite
+  serveStatic(app);
+  await setupVite(app, server);
 
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
-  }
-
+  const port = await findAvailablePort();
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
