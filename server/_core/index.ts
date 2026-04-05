@@ -2,7 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { createProxyMiddleware } from 'http-proxy-middleware';
+
 // Clerk auth handled in context.ts
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -58,8 +58,7 @@ async function startServer() {
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   
-  // Clerk proxy route
-  app.use('/clerk', createProxyMiddleware({ target: 'https://frontend-api.clerk.services', changeOrigin: true, pathRewrite: { '^/clerk': '' } }));
+
   
   // PDF Download endpoint - Express GET route (not tRPC)
   app.get("/api/pdf/:reportId", async (req, res) => {
