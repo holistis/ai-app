@@ -5,7 +5,7 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "startCommand": "NODE_ENV=production node dist/index.js",
+    "startCommand": "npm install -g serve && serve -s dist",
     "restartPolicyMaxRetries": 5
   }
 }
