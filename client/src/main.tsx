@@ -1,13 +1,14 @@
-import { trpc } from "@/lib/trpc";
+import React from "react";
+import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
-import { createRoot } from "react-dom/client";
 import superjson from "superjson";
+import { trpc } from "@/lib/trpc";
 import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 import App from "./App";
 import "./index.css";
-import React from "react";
 
+// Haal Clerk key uit .env.production
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 const queryClient = new QueryClient({
