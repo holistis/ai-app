@@ -9,12 +9,16 @@ import AnamnesisQuestionnaire from "./pages/AnamnesisQuestionnaire";
 import RapportPage from "./pages/RapportPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { MyReports } from "./pages/MyReports";
+import SignInPage from "./pages/SignInPage";
+import SignUpPage from "./pages/SignUpPage";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/sign-in"} component={SignInPage} />
+      <Route path={"/sign-up"} component={SignUpPage} />
       <Route path={"/anamnesis"} component={AnamnesisQuestionnaire} />
       <Route path={"/rapport"} component={RapportPage} />
       <Route path={"/admin"} component={AdminDashboard} />
