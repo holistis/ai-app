@@ -30,7 +30,7 @@ function TRPCWrapper() {
           url: "/api/trpc",
           transformer: superjson,
           async headers() {
-            const token = await getToken();
+            const token = await getToken({ template: "default" });
             return token ? { Authorization: `Bearer ${token}` } : {};
           },
         }),
