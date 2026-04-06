@@ -2,7 +2,6 @@ import express from "express";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { clerkClient } from "@clerk/clerk-sdk-node";
-
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -11,7 +10,6 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // CORS
   app.use((req, res, next) => {
     const origin = req.headers.origin || '*';
     res.header('Access-Control-Allow-Origin', origin);
@@ -25,7 +23,6 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  // ✅ Clerk auth middleware
   app.use(async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization;
@@ -37,22 +34,13 @@ async function startServer() {
         (req as any).auth = { userId: null };
       }
     } catch (error) {
-      console.log("[Auth error]", error);
       (req as any).auth = { userId: null };
     }
     next();
   });
 
-  // tRPC endpoint
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
+  app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
 
-  // Frontend
   serveStatic(app);
 
   if (process.env.NODE_ENV !== "production") {
@@ -60,7 +48,7 @@ async function startServer() {
   }
 
   const PORT = process.env.PORT || 8080;
-  server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
 startServer().catch(console.error);
