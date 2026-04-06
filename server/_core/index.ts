@@ -31,7 +31,8 @@ async function startServer() {
       const authHeader = req.headers.authorization;
       if (authHeader?.startsWith("Bearer ")) {
         const token = authHeader.substring(7);
-        const decoded = await clerkClient.verifyToken(token);
+        const session = await clerkClient.sessions.verifySessionToken(token);
+(req as any).auth = { userId: session.userId };
         (req as any).auth = {
           userId: decoded.sub,
         };
