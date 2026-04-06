@@ -1,6 +1,5 @@
 import React from "react";
 import { Route, Switch } from "wouter";
-import { ClerkProvider } from "@clerk/clerk-react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -13,8 +12,6 @@ import { MyReports } from "./pages/MyReports";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import NotFound from "./pages/NotFound";
-
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 function RouterComponent() {
   return (
@@ -40,16 +37,14 @@ function RouterComponent() {
 
 function App() {
   return (
-    <ClerkProvider publishableKey={clerkPubKey}>
-      <ErrorBoundary>
-        <ThemeProvider defaultTheme="light">
-          <TooltipProvider>
-            <Toaster />
-            <RouterComponent />
-          </TooltipProvider>
-        </ThemeProvider>
-      </ErrorBoundary>
-    </ClerkProvider>
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="light">
+        <TooltipProvider>
+          <Toaster />
+          <RouterComponent />
+        </TooltipProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
