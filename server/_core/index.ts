@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Twee mapjes omhoog vanuit server/_core/ → project root → dan dist/
-const DIST_PATH = path.resolve(__dirname, "../../dist");
+const DIST_PATH = path.resolve(__dirname, "../../dist/public");
 
 async function startServer() {
   const app = express();
