@@ -9,19 +9,29 @@ export async function createContext({ req, res }: any) {
 
   try {
     const authHeader = req.headers.authorization;
-
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
-
-      // ✅ JUISTE manier Clerk token lezen
       const decoded = await clerkClient.verifyToken(token);
       const clerkId = decoded.sub;
 
       if (clerkId) {
-        const db = await getDb();
+        // ✅ Haal altijd de Clerk gebruiker op om de rol te lezen
+        let clerkUser: any = null;
+        try {
+          clerkUser = await clerkClient.users.getUser(clerkId);
+        } catch {}
 
+        // ✅ Rol komt uit Clerk publicMetadata (jij had dit al goed staan)
+        const clerkRole = clerkUser?.publicMetadata?.role as string | undefined;
+        const email = clerkUser?.emailAddresses?.[0]?.emailAddress || "";
+
+        // ✅ Admin check: Clerk metadata OF de ADMIN_EMAIL variabele
+        const isAdmin =
+          clerkRole === "admin" || email === process.env.ADMIN_EMAIL;
+        const role = isAdmin ? "admin" : "user";
+
+        const db = await getDb();
         if (db) {
-          // 🔍 check of user al bestaat
           let existing = await db
             .select()
             .from(users)
@@ -29,23 +39,16 @@ export async function createContext({ req, res }: any) {
             .limit(1);
 
           if (existing.length > 0) {
-            user = existing[0];
+            // ✅ Update altijd de rol zodat hij nooit verouderd is
+            await db
+              .update(users)
+              .set({ role, updatedAt: new Date() })
+              .where(eq(users.clerkId, clerkId));
+
+            user = { ...existing[0], role };
           } else {
-            // 🆕 eerste keer login → user aanmaken
-            let clerkUser: any = null;
-
-            try {
-              clerkUser = await clerkClient.users.getUser(clerkId);
-            } catch {}
-
-            const email =
-              clerkUser?.emailAddresses?.[0]?.emailAddress || "";
-
+            // 🆕 Eerste keer login → gebruiker aanmaken
             const name = clerkUser?.fullName || "";
-
-            const role =
-              email === process.env.ADMIN_EMAIL ? "admin" : "user";
-
             await db.insert(users).values({
               clerkId,
               email,
@@ -55,13 +58,11 @@ export async function createContext({ req, res }: any) {
               updatedAt: new Date(),
             } as any);
 
-            // opnieuw ophalen
             let newUser = await db
               .select()
               .from(users)
               .where(eq(users.clerkId, clerkId))
               .limit(1);
-
             user = newUser[0] ?? null;
           }
         }
