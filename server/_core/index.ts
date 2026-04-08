@@ -13,7 +13,7 @@ import { requireAuth } from "@clerk/express";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DIST_PATH = path.resolve(__dirname, "../../dist/public");
+const DIST_PATH = path.resolve(__dirname, "../dist/public");
 
 async function startServer() {
   const app = express();
