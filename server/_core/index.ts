@@ -1,43 +1,31 @@
-import dotenv from "dotenv";
-dotenv.config();
-import express from "express";
+import express, { Express } from "express";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { requireAuth } from "@clerk/express";
+import cors from "cors";
 
-// Clerk imports
-import { clerkClient, requireAuth } from "@clerk/express";
+export async function initServer(app: Express) {
+  // 1. Basis Middleware
+  app.use(cors());
+  app.use(express.json());
 
-async function startServer() {
-  const app = express();
-  const server = createServer(app);
-
-  // CORS instellingen
+  // 2. Clerk Auth Middleware met uitzondering voor publieke routes
+  // Dit stopt de "Too many redirects" loop
   app.use((req, res, next) => {
-    const origin = req.headers.origin || "*";
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-    );
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, X-Requested-With"
-    );
-    res.header("Access-Control-Allow-Credentials", "true");
-    if (req.method === "OPTIONS") return res.sendStatus(200);
-    next();
+    const publicRoutes = ['/sign-in', '/sign-up', '/api/clerk-webhook'];
+    
+    // Controleer of de huidige route in de lijst met publieke routes staat
+    if (publicRoutes.some(route => req.path.startsWith(route))) {
+      return next();
+    }
+    
+    // Voor alle andere routes: vereis inloggen
+    return requireAuth()(req, res, next);
   });
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
-  // Auth middleware van Clerk
-  app.use(requireAuth()); // vereist dat gebruiker ingelogd is
-
-  // TRPC endpoint
+  // 3. tRPC API Route
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -46,16 +34,6 @@ async function startServer() {
     })
   );
 
-  // Static files en Vite setup
-  serveStatic(app);
-  if (process.env.NODE_ENV !== "production") {
-    await setupVite(app, server);
-  }
-
-  const PORT = process.env.PORT || 8080;
-  server.listen(PORT, () =>
-    console.log(`Server running on port ${PORT}`)
-  );
+  // 4. Overige routes (zoals Vite of statische bestanden)
+  // Deze worden pas uitgevoerd als de gebruiker door de auth hierboven is
 }
-
-startServer().catch(console.error);
