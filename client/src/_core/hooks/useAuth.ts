@@ -9,12 +9,15 @@ export function useAuth(options?: { redirectOnUnauthenticated?: boolean; redirec
     window.location.href = "/sign-in";
   }, []);
 
+  // ✅ Rol komt nu uit Clerk publicMetadata
+  const role = (clerkUser?.publicMetadata?.role as string) ?? "user";
+
   return {
     user: isSignedIn ? {
       id: clerkUser?.id ?? "",
       email: clerkUser?.emailAddresses?.[0]?.emailAddress ?? "",
       name: clerkUser?.fullName ?? "",
-      role: "user",
+      role: role,
     } : null,
     loading: !isLoaded,
     error: null,
