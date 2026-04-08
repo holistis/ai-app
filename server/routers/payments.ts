@@ -7,7 +7,8 @@ import { eq } from "drizzle-orm";
 import { sendReportEmails } from "../_core/email";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+const stripeKey = process.env.STRIPE_SECRET_KEY || "sk_test_dummy_key";
+const stripe = new Stripe(stripeKey, { apiVersion: "2023-08-16" });
 
 const PRICES = {
   inzicht_rapport: 0.00, // Gratis
