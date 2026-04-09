@@ -40,6 +40,14 @@ async function startServer() {
     res.sendStatus(200);
   });
 
+  // 🔍 DEBUG - tijdelijk om te zien wat er binnenkomt
+  app.use("/api/trpc", (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    console.log("[DEBUG] Auth header aanwezig:", !!authHeader);
+    console.log("[DEBUG] Auth header waarde:", authHeader?.substring(0, 40) || "GEEN");
+    next();
+  });
+
   app.use(
     "/api/trpc",
     requireAuth(),
