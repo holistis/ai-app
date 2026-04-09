@@ -73,7 +73,7 @@ function normalizeReport(report: any) {
     recommendations,
     protocols,
     scientificReferences,
-    isCorrupted: isCorruptedContent(content) || (!content && !report.isPaid)
+    isCorrupted: isCorruptedContent(content)
   };
 }
 
