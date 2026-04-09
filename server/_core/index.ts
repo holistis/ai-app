@@ -9,8 +9,7 @@ import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { clerkMiddleware } from "@clerk/express";
-import { clerkClient } from "@clerk/express";
+import { clerkMiddleware, requireAuth } from "@clerk/express";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,26 +40,9 @@ async function startServer() {
     res.sendStatus(200);
   });
 
-  // Debug + handmatige auth check
-  app.use("/api/trpc", async (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      console.log("[DEBUG] Geen token ontvangen");
-      return res.status(401).json({ error: "Geen token" });
-    }
-    const token = authHeader.substring(7);
-    try {
-      const verified = await clerkClient.verifyToken(token);
-      console.log("[DEBUG] Token geldig voor userId:", verified.sub);
-      next();
-    } catch (err: any) {
-      console.error("[DEBUG] Token verificatie mislukt:", err.message);
-      return res.status(401).json({ error: err.message });
-    }
-  });
-
   app.use(
     "/api/trpc",
+    requireAuth(),
     createExpressMiddleware({
       router: appRouter,
       createContext,
