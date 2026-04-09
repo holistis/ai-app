@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 if (process.env.NODE_ENV !== "production") {
   dotenv.config();
 }
-
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -10,11 +9,10 @@ import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { requireAuth } from "@clerk/express";
+import { clerkMiddleware, requireAuth } from "@clerk/express";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const DIST_PATH = path.resolve(__dirname, "../dist/public");
 
 async function startServer() {
@@ -22,6 +20,7 @@ async function startServer() {
   const server = createServer(app);
 
   app.set("trust proxy", 1);
+  app.use(clerkMiddleware());
 
   app.use((req, res, next) => {
     const origin = req.headers.origin || "*";
@@ -35,7 +34,6 @@ async function startServer() {
 
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
   app.use(express.static(DIST_PATH));
 
   app.post("/api/clerk-webhook", (req, res) => {
