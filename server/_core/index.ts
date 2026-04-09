@@ -9,7 +9,8 @@ import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { clerkMiddleware, requireAuth } from "@clerk/express";
+import { clerkMiddleware } from "@clerk/express";
+import { clerkClient } from "@clerk/express";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,17 +41,26 @@ async function startServer() {
     res.sendStatus(200);
   });
 
-  // 🔍 DEBUG - tijdelijk om te zien wat er binnenkomt
-  app.use("/api/trpc", (req, res, next) => {
+  // Debug + handmatige auth check
+  app.use("/api/trpc", async (req, res, next) => {
     const authHeader = req.headers.authorization;
-    console.log("[DEBUG] Auth header aanwezig:", !!authHeader);
-    console.log("[DEBUG] Auth header waarde:", authHeader?.substring(0, 40) || "GEEN");
-    next();
+    if (!authHeader?.startsWith("Bearer ")) {
+      console.log("[DEBUG] Geen token ontvangen");
+      return res.status(401).json({ error: "Geen token" });
+    }
+    const token = authHeader.substring(7);
+    try {
+      const verified = await clerkClient.verifyToken(token);
+      console.log("[DEBUG] Token geldig voor userId:", verified.sub);
+      next();
+    } catch (err: any) {
+      console.error("[DEBUG] Token verificatie mislukt:", err.message);
+      return res.status(401).json({ error: err.message });
+    }
   });
 
   app.use(
     "/api/trpc",
-    requireAuth(),
     createExpressMiddleware({
       router: appRouter,
       createContext,
