@@ -9,7 +9,7 @@ import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { clerkMiddleware, requireAuth } from "@clerk/express";
+import { clerkMiddleware } from "@clerk/express";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,7 +42,6 @@ async function startServer() {
 
   app.use(
     "/api/trpc",
-    requireAuth(),
     createExpressMiddleware({
       router: appRouter,
       createContext,
