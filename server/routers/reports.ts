@@ -28,7 +28,6 @@ export const reportsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Get existing report
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
@@ -49,7 +48,6 @@ export const reportsRouter = router({
 
       const report = existingReport[0];
 
-      // Get anamnesis data
       const anamnesisData = await db
         .select()
         .from(anamnesis)
@@ -62,14 +60,12 @@ export const reportsRouter = router({
 
       const anamnesisResponses = (anamnesisData[0]?.responses || {}) as Record<string, any>;
 
-      // Generate full report with AI
       const fullReport = await generateFullReportContent(
         anamnesisData[0]?.conditionType || "other",
         anamnesisResponses,
         ctx.user.name || "Patiënt"
       );
 
-      // Update report in database (serialize JSON fields to strings)
       await db
         .update(reports)
         .set({
@@ -85,7 +81,6 @@ export const reportsRouter = router({
         })
         .where(eq(reports.id, input.reportId));
 
-      // Notify owner about full report generation (paid)
       try {
         await notifyOwner({
           title: `📊 Volledig Rapport Gegenereerd: ${ctx.user.name || ctx.user.email}`,
@@ -100,7 +95,6 @@ export const reportsRouter = router({
         console.warn("[Notify] Failed to notify owner about full report:", notifError);
       }
 
-      // Send full report via email with PDF to owner AND patient
       const origin = (ctx.req.headers.origin as string) || "https://ai.holistischadviseur.nl";
       sendReportEmails({
         patientName: ctx.user.name || "Patiënt",
@@ -137,16 +131,12 @@ export const reportsRouter = router({
       console.log(`[PDF-Download] START - User ${ctx.user.id} requesting PDF for report ${input.reportId}`);
       
       try {
-        // Get report
         const db = await getDb();
         if (!db) {
           console.error(`[PDF-Download] ❌ Database not available`);
           throw new Error("Database not available");
         }
         
-        console.log(`[PDF-Download] Fetching report ${input.reportId} from database`);
-        
-        // Build where clause - admin can access any report, user can only access their own
         const whereConditions = [eq(reports.id, input.reportId)];
         if (ctx.user.role !== 'admin') {
           whereConditions.push(eq(reports.userId, ctx.user.id));
@@ -159,104 +149,59 @@ export const reportsRouter = router({
           .limit(1);
 
         if (!reportData.length) {
-          console.error(`[PDF-Download] ❌ Report ${input.reportId} not found for user ${ctx.user.id}`);
           throw new Error("Report not found");
         }
 
         const report = reportData[0];
-        console.log(`[PDF-Download] Report found: ${report.id}, pdfUrl: ${report.pdfUrl ? "EXISTS" : "MISSING"}`);
 
-        // If PDF already exists in database, return it directly
         if (report.pdfUrl) {
-          console.log(`[PDF-Download] ✅ Using existing PDF URL from database`);
-          console.log(`[PDF-Download] Returning URL: ${report.pdfUrl}`);
-          return {
-            success: true,
-            pdfUrl: report.pdfUrl,
-          };
+          return { success: true, pdfUrl: report.pdfUrl };
         }
 
-        // Otherwise generate new PDF
-        console.log(`[PDF-Download] No existing PDF URL, generating new PDF`);
         const htmlContent = generatePDFContent(report);
 
-        // Convert HTML to PDF buffer
         let pdfBuffer: Buffer;
         const pdfStartTime = Date.now();
         try {
-          console.log(`[PDF-Download] Starting PDF generation for report ${report.id}`);
           pdfBuffer = await generatePDFBuffer(htmlContent);
-          console.log(`[PDF-Download] PDF generated successfully`);
         } catch (error) {
-          const pdfTime = Date.now() - pdfStartTime;
           const errorMsg = error instanceof Error ? error.message : "Unknown error";
-          const stack = error instanceof Error ? error.stack : "No stack trace";
-          console.error(`[PDF-Download] ❌ PDF generation FAILED after ${pdfTime}ms: ${errorMsg}`);
-          console.error(`[PDF-Download] Stack: ${stack}`);
+          console.error(`[PDF-Download] ❌ PDF generation FAILED: ${errorMsg}`);
           throw new Error(`Failed to generate PDF: ${errorMsg}`);
         }
 
-        // Upload to S3
         const fileName = `rapport-${report.id}-${Date.now()}.pdf`;
-        const s3StartTime = Date.now();
         try {
-          console.log(`[PDF-Download] Uploading PDF to S3 (${pdfBuffer.length} bytes)`);
           const { url } = await storagePut(
             `reports/${ctx.user.id}/${fileName}`,
             pdfBuffer,
             "application/pdf"
           );
-          const s3Time = Date.now() - s3StartTime;
-          console.log(`[PDF-Download] ✅ S3 upload successful in ${s3Time}ms, URL: ${url}`);
 
-          // Update report with PDF URL
           try {
             await db
               .update(reports)
-              .set({
-                pdfUrl: url,
-                updatedAt: new Date(),
-              } as any)
+              .set({ pdfUrl: url, updatedAt: new Date() } as any)
               .where(eq(reports.id, input.reportId));
-            console.log(`[PDF-Download] ✅ Database updated with PDF URL`);
           } catch (dbError) {
-            const dbErrorMsg = dbError instanceof Error ? dbError.message : "Unknown error";
-            const dbStack = dbError instanceof Error ? dbError.stack : "No stack trace";
-            console.error(`[PDF-Download] ⚠️ Database update failed: ${dbErrorMsg}`);
-            console.error(`[PDF-Download] DB Stack: ${dbStack}`);
+            console.error(`[PDF-Download] ⚠️ Database update failed:`, dbError);
           }
 
-          const totalTime = Date.now() - pdfStartTime;
-          console.log(`[PDF-Download] ✅ COMPLETE - Report ${report.id} PDF ready in ${totalTime}ms`);
-          console.log(`[PDF-Download] Returning URL: ${url}`);
-
-          return {
-            success: true,
-            pdfUrl: url,
-          };
+          console.log(`[PDF-Download] ✅ COMPLETE in ${Date.now() - pdfStartTime}ms`);
+          return { success: true, pdfUrl: url };
         } catch (s3Error) {
-          const s3Time = Date.now() - s3StartTime;
           const errorMsg = s3Error instanceof Error ? s3Error.message : "Unknown error";
-          const stack = s3Error instanceof Error ? s3Error.stack : "No stack trace";
-          console.error(`[PDF-Download] ❌ S3 upload FAILED after ${s3Time}ms: ${errorMsg}`);
-          console.error(`[PDF-Download] S3 Stack: ${stack}`);
           throw new Error(`Failed to upload PDF to S3: ${errorMsg}`);
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Unknown error";
-        const stack = error instanceof Error ? error.stack : "No stack trace";
         console.error(`[PDF-Download] ❌ ENDPOINT ERROR: ${errorMsg}`);
-        console.error(`[PDF-Download] Error Stack: ${stack}`);
         throw error;
       }
     }),
 
   getReport: protectedProcedure
-    .input(
-      z.object({
-        reportId: z.number(),
-      })
-    )
+    .input(z.object({ reportId: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -264,38 +209,21 @@ export const reportsRouter = router({
       const reportData = await db
         .select()
         .from(reports)
-        .where(
-          and(
-            eq(reports.id, input.reportId),
-            eq(reports.userId, ctx.user.id)
-          )
-        )
+        .where(and(eq(reports.id, input.reportId), eq(reports.userId, ctx.user.id)))
         .limit(1);
 
-      if (!reportData.length) {
-        throw new Error("Report not found");
-      }
-
+      if (!reportData.length) throw new Error("Report not found");
       return reportData[0];
     }),
 
   listReports: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
-    
-    return await db
-      .select()
-      .from(reports)
-      .where(eq(reports.userId, ctx.user.id));
+    return await db.select().from(reports).where(eq(reports.userId, ctx.user.id));
   }),
 
-  // Admin endpoint to get any report by ID (no userId restriction)
   getReportAdmin: adminProcedure
-    .input(
-      z.object({
-        reportId: z.number(),
-      })
-    )
+    .input(z.object({ reportId: z.number() }))
     .query(async ({ ctx, input }) => {
       console.log(`[getReportAdmin] Admin ${ctx.user.id} requesting report ${input.reportId}`);
       const db = await getDb();
@@ -307,46 +235,25 @@ export const reportsRouter = router({
         .where(eq(reports.id, input.reportId))
         .limit(1);
 
-      if (!reportData.length) {
-        console.log(`[getReportAdmin] Report ${input.reportId} not found`);
-        throw new Error("Report not found");
-      }
-
-      console.log(`[getReportAdmin] Report ${input.reportId} found, returning to admin`);
+      if (!reportData.length) throw new Error("Report not found");
       return reportData[0];
     }),
 
   deleteReport: protectedProcedure
-    .input(
-      z.object({
-        id: z.number(),
-      })
-    )
+    .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       
-      // Check if report belongs to user
       const report = await db
         .select()
         .from(reports)
-        .where(
-          and(
-            eq(reports.id, input.id),
-            eq(reports.userId, ctx.user.id)
-          )
-        )
+        .where(and(eq(reports.id, input.id), eq(reports.userId, ctx.user.id)))
         .limit(1);
 
-      if (!report.length) {
-        throw new Error("Report not found");
-      }
+      if (!report.length) throw new Error("Report not found");
 
-      // Delete report
-      await db
-        .delete(reports)
-        .where(eq(reports.id, input.id));
-
+      await db.delete(reports).where(eq(reports.id, input.id));
       return { success: true };
     }),
 });
@@ -356,19 +263,17 @@ async function generateFullReportContent(
   responses: Record<string, any>,
   userName: string
 ) {
-  // Build a rich, structured prompt using holistic knowledge
   const conditionLabel: Record<string, string> = {
     chronic_fatigue: "Chronische Vermoeidheid",
     digestive_issues: "Spijsverteringsproblemen",
     solk: "SOLK (Somatisch Onverklaarbare Lichamelijke Klachten)",
     alk: "ALK (Aspecifieke Lichamelijke Klachten)",
   };
+  // ✅ FIX 1: altijd de Nederlandse naam gebruiken, nooit de technische sleutel
   const conditionName = conditionLabel[conditionType] || conditionType;
 
-  // Extract key anamnesis data for context
   const stressLevel = responses.stress_level || responses.stressNiveau || "onbekend";
   const sleepHours = responses.sleep_hours || responses.slaapUren || "onbekend";
-  const digestiveIssues = responses.digestive_issues || responses.darmklachten || "";
   const bloodValues = responses.blood_values || responses.bloedwaarden || "";
   const previousTreatments = responses.previous_treatments || responses.eerderePogingen || "";
   const medications = responses.medications || responses.medicatie || "";
@@ -377,7 +282,12 @@ async function generateFullReportContent(
 
 ${AI_KNOWLEDGE_BASE}
 
-Je schrijft een VOLLEDIG BETAALD RAPPORT (€34,95) voor ${userName} met ${conditionName}.
+Je schrijft een VOLLEDIG BETAALD RAPPORT (€34,95) voor ${userName} met de klacht: ${conditionName}.
+
+⚠️ HEEL BELANGRIJK — TAALREGEL:
+- Gebruik NOOIT technische variabelenamen zoals "digestive_issues", "chronic_fatigue", "solk", "alk" in de tekst van het rapport.
+- Gebruik ALTIJD de Nederlandse naam: "${conditionName}"
+- Schrijf alsof je een brief schrijft aan een patiënt — warm, persoonlijk en professioneel.
 
 ## PATIËNT GEGEVENS
 Naam: ${userName}
@@ -387,83 +297,51 @@ Slaap: ${sleepHours} uur
 Bloedwaarden/tekorten: ${bloodValues || "Niet opgegeven"}
 Eerdere behandelingen: ${previousTreatments || "Geen opgegeven"}
 Medicatie/supplementen: ${medications || "Geen"}
-Darmklachten: ${digestiveIssues || "Niet specifiek opgegeven"}
 
 Volledige anamnese:
 ${JSON.stringify(responses, null, 2)}
 
-## JOUW HOLISTISCHE FILOSOFIE (gebruik dit als basis)
+## JOUW HOLISTISCHE FILOSOFIE
 - Input bepaalt output: klachten zijn signalen dat de input niet klopt
 - Het lichaam wil genezen als het de juiste omstandigheden krijgt
 - Werk met correlaties en patronen, niet met losse symptomen
 - Voorzichtig en gefaseerd: begin met elimineren, dan opbouwen
-- Stel altijd vragen over bloedwaarden, eerdere pogingen en wat wel/niet werkte
 
 ## CORRELATIES DIE JE MOET HERKENNEN
 - Chronische stress + darmklachten → darm-brein as disbalans + verhoogde cortisol → oxidatieve stress → mineralentekorten (koper, magnesium, zink, B1, omega-3)
 - Vermoeidheid + brain fog → mitochondriale disfunctie → ATP-productie verstoord
 - Hoge stress + slaapproblemen → HPA-as uitputting → bijniermoeheid → cortisol ritme verstoord
 - Darmklachten + huidproblemen + stemmingswisselingen → leaky gut + dysbiose → systemische ontsteking
-- Hormonale klachten → leverbelasting + insulineresistentie + stress
-- Vermoeidheid na eten → bloedsuikerpieken → insulineresistentie
 
 ## VEILIGHEIDSREGELS
 - Geef GEEN medische diagnoses
 - Adviseer altijd een arts te raadplegen bij twijfel of ernstige klachten
-- Werk VOORZICHTIG en GEFASEERD — begin met elimineren, niet met toevoegen
-- Als bloedwaarden ontbreken: adviseer dit eerst te laten checken
-- Wees eerlijk over wat al geprobeerd is en waarom het mogelijk niet werkte
-
-## WAT HET RAPPORT MOET BEVATTEN
-
-Het rapport moet de patiënt OVERTUIGEN om de adviezen op te volgen door:
-1. Heel duidelijk uitleggen WAAROM dit belangrijk is (correlaties en gevolgen)
-2. Uitleggen wat er gebeurt als men NIETS doet (negatieve gevolgen)
-3. Uitleggen wat er verbetert als men het WEL opvolgt (positieve gevolgen)
-4. Logische volgorde: eerst begrijpen, dan doen
-5. Motiveren vanuit begrip, niet vanuit angst
+- Werk VOORZICHTIG en GEFASEERD
 
 Genereer een JSON-response met deze exacte structuur:
 {
-  "content": "[VERPLICHT: Minimaal 8 uitgebreide alinea's met: (1) Warme persoonlijke opening, (2) Analyse van de klachten en patronen die je ziet, (3) Correlaties en onderliggende oorzaken met uitleg WAAROM dit zo is, (4) Wat er gebeurt als niets gedaan wordt, (5) Wat er verbetert bij opvolging, (6"Uitleg over het 6-maanden herstelplan en de logica erachter" (7) Specifieke aandacht voor bloedwaarden/tekorten als relevant, (8) Motiverende afsluiting met call-to-action voor follow-up contact]",
-  "summary": "[2-3 alinea's: kernbevindingen, belangrijkste correlaties, en de rode draad van het herstelplan]",
-  "keyInsights": ["Inzicht 1 met uitleg waarom dit belangrijk is", "Inzicht 2", "Inzicht 3", "Inzicht 4", "Inzicht 5"],
-  "recommendations": ["Concrete aanbeveling 1 met uitleg waarom", "Aanbeveling 2", "Aanbeveling 3", "Aanbeveling 4", "Aanbeveling 5"],
+  "content": "[Minimaal 8 uitgebreide alinea's: (1) Warme persoonlijke opening met naam ${userName}, (2) Analyse van de klachten en patronen, (3) Correlaties en onderliggende oorzaken met uitleg WAAROM, (4) Wat er gebeurt als niets gedaan wordt, (5) Wat er verbetert bij opvolging, (6) Uitleg over het 6-maanden herstelplan, (7) Specifieke aandacht voor bloedwaarden/tekorten, (8) Motiverende afsluiting met call-to-action]",
+  "summary": "[2-3 alinea's: kernbevindingen en de rode draad van het herstelplan]",
+  "keyInsights": ["Inzicht 1 met uitleg", "Inzicht 2", "Inzicht 3", "Inzicht 4", "Inzicht 5"],
+  "recommendations": ["Aanbeveling 1 met uitleg waarom", "Aanbeveling 2", "Aanbeveling 3", "Aanbeveling 4", "Aanbeveling 5"],
   "protocols": {
-    "nutrition": ["Voedingsprotocol 1 (week 1-4: eliminatiefase)", "Protocol 2 (week 5-8: opbouwfase)", "Protocol 3 (week 9-12: optimalisatiefase)", "Protocol 4"],
+    "nutrition": ["Voedingsprotocol week 1-4: eliminatiefase", "Voedingsprotocol week 5-8: opbouwfase", "Voedingsprotocol week 9-12: optimalisatiefase"],
     "supplements": ["Supplement 1 met dosering en timing", "Supplement 2", "Supplement 3"],
-    "lifestyle": ["Leefstijlverandering 1 met concrete stappen", "Leefstijl 2", "Leefstijl 3", "Leefstijl 4"],
+    "lifestyle": ["Leefstijlverandering 1 met concrete stappen", "Leefstijl 2", "Leefstijl 3"],
     "mentalPractices": ["Mentale praktijk 1", "Praktijk 2", "Praktijk 3"]
   },
   "scientificReferences": ["Referentie 1", "Referentie 2", "Referentie 3", "Referentie 4", "Referentie 5"]
 }
 
-## 6-MAANDEN HERSTELPLAN STRUCTUUR (verwerk dit in de content)
-**Maand 1-2: Stabilisatiefase**
-- Verwijder triggers (suiker, gluten, alcohol, bewerkte voeding)
-- Stel slaapritme in
-- Begin met stressmanagement
+## 6-MAANDEN HERSTELPLAN (verwerk in content)
+Maand 1-2: Stabilisatiefase — verwijder triggers, herstel slaapritme, start stressmanagement
+Maand 3-4: Herstelfase — gefermenteerde voeding, gerichte supplementen, dagelijkse beweging
+Maand 5-6: Optimalisatiefase — evalueer bloedwaarden, pas supplementen aan, bouw intensiteit op
 
-**Maand 3-4: Herstelfase**
-- Introduceer gefermenteerde voeding
-- Start gerichte supplementen
-- Voeg dagelijkse beweging toe
-
-**Maand 5-6: Optimalisatiefase**
-- Evalueer bloedwaarden (indien niet gedaan)
-- Pas supplementen aan op basis van resultaten
-- Bouw intensiteit van beweging op
-
-## CALL TO ACTION (verplicht in de content)
-Sluit het rapport af met een professionele uitnodiging voor een follow-up gesprek:
+## CALL TO ACTION (verplicht aan het einde van content)
 "Dit is slechts het begin van jouw gezondheidsreis. Voor persoonlijke begeleiding bij het uitvoeren van dit 6-maanden herstelplan kunt u contact opnemen via info@holistischadviseur.nl. Samen bespreken we uw voortgang en passen we het plan aan op basis van uw ervaringen."
 
-Zorg dat het rapport:
-- Minimaal 1500 woorden is in de content sectie
-- Persoonlijk en warm is (gebruik de naam ${userName})
-- Wetenschappelijk onderbouwd maar begrijpelijk is
-- Concrete, uitvoerbare stappen bevat
-- De correlaties duidelijk uitlegt zodat de patiënt begrijpt WAAROM ze dit moeten doen`;
+Zorg dat het rapport minimaal 1500 woorden is, persoonlijk en warm (gebruik naam ${userName}), wetenschappelijk onderbouwd maar begrijpelijk.`;
 
   const conditionKnowledge = getConditionSpecificKnowledge(conditionType);
 
@@ -475,22 +353,16 @@ Zorg dat het rapport:
           content: `Je bent een holistische gezondheidsadviseur van Holistisch Adviseur (holistischadviseur.nl), opgericht door Abdellah Ouadoudi.
 
 ${AI_CORE_MINDSET}
-
 ${MULTI_LAYER_ANALYSIS}
-
 ${CORRELATION_ENGINE}
-
 ${VALIDATION_SYSTEM}
-
 ${HOLISTIC_CORE_PRINCIPLES}
-
 ${conditionKnowledge}
-
 ${REPORT_STRUCTURE}
-
 ${SLEEP_REBOOT_PROTOCOL}
 
-Je genereert altijd uitgebreide, wetenschappelijk onderbouwde rapporten van minimaal 1500 woorden. Gebruik de RAPPORT STRUCTUUR (Herkenning → Logica → Gevolgen → Oplossing → 12-maanden plan). Integreer het Sleep & Daily Reboot Protocol op logische momenten.`,
+BELANGRIJK: Gebruik nooit technische variabelenamen in de rapporttekst. Schrijf altijd in natuurlijk Nederlands.
+Je genereert altijd uitgebreide, wetenschappelijk onderbouwde rapporten van minimaal 1500 woorden.`,
         },
         {
           role: "user",
@@ -517,17 +389,12 @@ Je genereert altijd uitgebreide, wetenschappelijk onderbouwde rapporten van mini
                   lifestyle: { type: "array", items: { type: "string" } },
                   mentalPractices: { type: "array", items: { type: "string" } },
                 },
+                required: ["nutrition", "supplements", "lifestyle", "mentalPractices"],
+                additionalProperties: false,
               },
               scientificReferences: { type: "array", items: { type: "string" } },
             },
-            required: [
-              "content",
-              "summary",
-              "keyInsights",
-              "recommendations",
-              "protocols",
-              "scientificReferences",
-            ],
+            required: ["content", "summary", "keyInsights", "recommendations", "protocols", "scientificReferences"],
             additionalProperties: false,
           },
         },
@@ -539,12 +406,10 @@ Je genereert altijd uitgebreide, wetenschappelijk onderbouwde rapporten van mini
 
     const contentStr = typeof content === "string" ? content : JSON.stringify(content);
     
-    // Try to parse the JSON response
     let parsed: any;
     try {
       parsed = JSON.parse(contentStr);
     } catch (parseError) {
-      // If JSON.parse fails, try to extract JSON from markdown code blocks
       const jsonMatch = contentStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
         parsed = JSON.parse(jsonMatch[1]);
@@ -553,14 +418,32 @@ Je genereert altijd uitgebreide, wetenschappelijk onderbouwde rapporten van mini
       }
     }
     
-    // Validate that we got the expected structure
     if (!parsed || typeof parsed !== 'object') {
       throw new Error('LLM response is not an object');
     }
     
-    // Ensure content field is a string
     if (typeof parsed.content !== 'string') {
       parsed.content = JSON.stringify(parsed.content);
+    }
+
+    // ✅ FIX 2: zorg dat protocols altijd de juiste structuur heeft met named keys
+    if (parsed.protocols) {
+      // Als protocols een array is of numeric keys heeft, herstel de structuur
+      const isNumericKeys = Object.keys(parsed.protocols).every(k => !isNaN(Number(k)));
+      if (Array.isArray(parsed.protocols) || isNumericKeys) {
+        console.warn('[Full Report] protocols had wrong structure, using empty defaults');
+        parsed.protocols = {
+          nutrition: [],
+          supplements: [],
+          lifestyle: [],
+          mentalPractices: [],
+        };
+      }
+      // Zorg dat alle verwachte keys bestaan
+      parsed.protocols.nutrition = parsed.protocols.nutrition || [];
+      parsed.protocols.supplements = parsed.protocols.supplements || [];
+      parsed.protocols.lifestyle = parsed.protocols.lifestyle || [];
+      parsed.protocols.mentalPractices = parsed.protocols.mentalPractices || [];
     }
     
     console.log('[Full Report] Generated with content length:', parsed.content?.length, 'insights:', parsed.keyInsights?.length);
@@ -572,7 +455,6 @@ Je genereert altijd uitgebreide, wetenschappelijk onderbouwde rapporten van mini
 }
 
 function generatePDFContent(report: any): string {
-  // Parse JSON fields if they are strings
   let keyInsights: string[] = [];
   let recommendations: string[] = [];
   let protocols: Record<string, string[]> = {};
@@ -590,15 +472,22 @@ function generatePDFContent(report: any): string {
     mentalPractices: "🧠 Mentale Praktijken",
   };
 
-  const protocolsHtml = Object.entries(protocols).map(([key, items]) => {
-    const label = protocolLabels[key] || key;
-    // Ensure items is always an array
-    const itemsArray = Array.isArray(items) ? items : (typeof items === 'string' ? [items] : []);
-    const itemsHtml = itemsArray.map((item: string, i: number) =>
-      `<div class="protocol-item"><span class="num">${i + 1}</span><span>${item.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span></div>`
-    ).join("");
-    return `<div class="protocol-section"><h3>${label}</h3>${itemsHtml}</div>`;
-  }).join("");
+  // ✅ FIX 2: sla numeric keys over, toon alleen named keys
+  const protocolsHtml = Object.entries(protocols)
+    .filter(([key]) => {
+      // Sla numeric keys over (dit zijn gebroken data structuren)
+      const isNumeric = !isNaN(Number(key));
+      return !isNumeric && protocolLabels[key];
+    })
+    .map(([key, items]) => {
+      const label = protocolLabels[key] || key;
+      const itemsArray = Array.isArray(items) ? items : (typeof items === 'string' ? [items] : []);
+      if (itemsArray.length === 0) return "";
+      const itemsHtml = itemsArray.map((item: string, i: number) =>
+        `<div class="protocol-item"><span class="num">${i + 1}</span><span>${item.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span></div>`
+      ).join("");
+      return `<div class="protocol-section"><h3>${label}</h3>${itemsHtml}</div>`;
+    }).join("");
 
   const contentHtml = (report.content || "")
     .replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -681,7 +570,7 @@ function generatePDFContent(report: any): string {
         </div>`).join("")}
     </div>` : ""}
 
-    ${Object.keys(protocols).length > 0 ? `
+    ${protocolsHtml ? `
     <div class="section">
       <div class="section-title">📋 Persoonlijke Protocollen</div>
       ${protocolsHtml}
