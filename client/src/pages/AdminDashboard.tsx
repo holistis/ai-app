@@ -19,7 +19,7 @@ export function AdminDashboard() {
   const reportsQuery = trpc.admin.getAllReports.useQuery(undefined, { enabled: activeTab === "reports" && user?.role === "admin" });
   const paymentsQuery = trpc.admin.getAllPayments.useQuery(undefined, { enabled: activeTab === "payments" && user?.role === "admin" });
   const anamnesisQuery = trpc.admin.getAllAnamnesis.useQuery(undefined, { enabled: activeTab === "anamnesis" && user?.role === "admin" });
-  const usersQuery = trpc.admin.getAllUsers.useQuery(undefined, { enabled: activeTab === "users" && user?.role === "admin" });
+  const usersQuery = trpc.admin.getAllUsers.useQuery(undefined, { enabled: user?.role === "admin" });
 
   if (loading) {
     return (
