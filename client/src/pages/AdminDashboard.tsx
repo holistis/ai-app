@@ -372,7 +372,7 @@ const getUserEmail = (userId: number) => {
                       {anamnesisQuery.data?.map((item: any) => (
                         <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                           <td className="py-3 px-3 text-gray-400 text-xs">#{item.id}</td>
-                          <td className="py-3 px-3 text-gray-700">#{item.userId}</td>
+                          <td className="py-3 px-3 text-gray-700">{getUserEmail(item.userId)}</td>
                           <td className="py-3 px-3">
                             <Badge variant="outline" className="text-xs">
                               {conditionLabels[item.conditionType] || item.conditionType}
