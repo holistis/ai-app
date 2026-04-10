@@ -66,7 +66,11 @@ export function AdminDashboard() {
     { id: "anamnesis", label: "Anamneses", icon: ClipboardList },
     { id: "users", label: "Gebruikers", icon: Users },
   ];
-
+// Hulpfunctie: zoek email op via userId
+const getUserEmail = (userId: number) => {
+  const found = usersQuery.data?.find((u: any) => u.id === userId);
+  return found?.email || found?.name || `#${userId}`;
+};
   const conditionLabels: Record<string, string> = {
     chronic_fatigue: "Chronische Vermoeidheid",
     digestive_issues: "Spijsverteringsproblemen",
