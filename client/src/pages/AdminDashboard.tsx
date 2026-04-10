@@ -239,7 +239,7 @@ const getUserEmail = (userId: number) => {
                       {reportsQuery.data?.map((report: any) => (
                         <tr key={report.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                           <td className="py-3 px-3 text-gray-400 text-xs">#{report.id}</td>
-                          <td className="py-3 px-3 text-gray-700">Gebruiker #{report.userId}</td>
+                          <td className="py-3 px-3 text-gray-700">{getUserEmail(report.userId)}</td>
                           <td className="py-3 px-3">
                             <Badge variant={report.reportType === "full_report" ? "default" : "secondary"} className="text-xs">
                               {report.reportType === "full_report" ? "Volledig" : "Inzicht"}
