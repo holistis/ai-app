@@ -304,7 +304,7 @@ const getUserEmail = (userId: number) => {
                       {paymentsQuery.data?.map((payment: any) => (
                         <tr key={payment.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                           <td className="py-3 px-3 text-gray-400 text-xs">#{payment.id}</td>
-                          <td className="py-3 px-3 text-gray-700">#{payment.userId}</td>
+                          <td className="py-3 px-3 text-gray-700">{getUserEmail(payment.userId)}</td>
                           <td className="py-3 px-3 font-semibold text-gray-900">€{parseFloat(payment.amount || 0).toFixed(2)}</td>
                           <td className="py-3 px-3">
                             <Badge variant="secondary" className="text-xs">
