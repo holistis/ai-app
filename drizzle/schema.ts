@@ -1,19 +1,8 @@
 import { mysqlTable, int, varchar, text, timestamp, mysqlEnum, decimal } from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).unique(),
-  /** Clerk authentication identifier. Unique per user. */
   clerkId: varchar("clerkId", { length: 255 }).unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -28,9 +17,6 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-/**
- * Anamnesis table: Stores patient questionnaire responses
- */
 export const anamnesis = mysqlTable("anamnesis", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -50,9 +36,6 @@ export const anamnesis = mysqlTable("anamnesis", {
 export type Anamnesis = typeof anamnesis.$inferSelect;
 export type InsertAnamnesis = typeof anamnesis.$inferInsert;
 
-/**
- * Reports table: Stores generated reports
- */
 export const reports = mysqlTable("reports", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -65,7 +48,7 @@ export const reports = mysqlTable("reports", {
   recommendations: text("recommendations"),
   protocols: text("protocols"),
   scientificReferences: text("scientificReferences"),
-  pdfUrl: varchar("pdfUrl", { length: 255 }),
+  pdfUrl: text("pdfUrl"),  // was varchar(255) — te klein voor base64 PDF
   status: mysqlEnum("status", ["draft", "generated", "sent"]).default("draft").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -74,9 +57,6 @@ export const reports = mysqlTable("reports", {
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = typeof reports.$inferInsert;
 
-/**
- * Payments table: Tracks all payments and subscriptions
- */
 export const payments = mysqlTable("payments", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -105,9 +85,6 @@ export const payments = mysqlTable("payments", {
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 
-/**
- * Coaching sessions table: Tracks AI coaching sessions
- */
 export const coachingSessions = mysqlTable("coachingSessions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -122,9 +99,6 @@ export const coachingSessions = mysqlTable("coachingSessions", {
 export type CoachingSession = typeof coachingSessions.$inferSelect;
 export type InsertCoachingSession = typeof coachingSessions.$inferInsert;
 
-/**
- * Patient progress table: Tracks patient progress during coaching
- */
 export const patientProgress = mysqlTable("patientProgress", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
