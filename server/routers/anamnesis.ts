@@ -2,7 +2,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { saveAnamnesis, saveReport, getUserReports, getDb } from "../db";
 import { reports, anamnesis } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { 
   AI_CORE_MINDSET, 
   MULTI_LAYER_ANALYSIS, 
@@ -42,7 +42,6 @@ export const anamnesisRouter = router({
       const startTime = Date.now();
       console.log(`[Rapport] Submit mutation started`);
       
-      // Save anamnesis
       const anamnesisStart = Date.now();
       const anamnesisResult = await saveAnamnesis(
         ctx.user.id,
@@ -51,7 +50,6 @@ export const anamnesisRouter = router({
       );
       console.log(`[Rapport] Anamnesis saved in ${Date.now() - anamnesisStart}ms`);
 
-      // Generate "Inzicht Rapport" (initial insights)
       const llmStart = Date.now();
       const inzichtRapport = await generateInzichtRapport(
         input.conditionType,
@@ -60,11 +58,9 @@ export const anamnesisRouter = router({
       );
       console.log(`[Rapport] LLM response received in ${Date.now() - llmStart}ms`);
 
-      // Get the inserted ID from result
-      const insertedId = Array.isArray(anamnesisResult) && anamnesisResult.length > 0 ? anamnesisResult[0].id : 1;
+      const insertedAnamnesisId = Array.isArray(anamnesisResult) && anamnesisResult.length > 0 ? anamnesisResult[0].id : 1;
 
-      // Save report
-      await saveReport(ctx.user.id, insertedId, {
+      await saveReport(ctx.user.id, insertedAnamnesisId, {
         reportType: "inzicht_rapport",
         title: `Holistische Gezondheidsanalyse - ${input.conditionType}`,
         content: inzichtRapport.content,
@@ -75,9 +71,19 @@ export const anamnesisRouter = router({
         scientificReferences: inzichtRapport.scientificReferences,
       });
 
-      console.log(`[Rapport] Report saved, total time so far: ${Date.now() - startTime}ms`);
+      // Haal het echte rapport ID op
+      const db = await getDb();
+      let insertedReportId = 0;
+      if (db) {
+        const latestReport = await db.select().from(reports)
+          .where(eq(reports.userId, ctx.user.id))
+          .orderBy(desc(reports.id))
+          .limit(1);
+        insertedReportId = latestReport[0]?.id ?? 0;
+      }
+
+      console.log(`[Rapport] Report saved with ID: ${insertedReportId}, total time so far: ${Date.now() - startTime}ms`);
       
-      // Send emails with PDF to owner and patient (non-blocking)
       const origin = (ctx.req.headers.origin as string) || "https://ai.holistischadviseur.nl";
       const emailStart = Date.now();
       console.log(`[Rapport] Starting email send with PDF generation...`);
@@ -86,7 +92,7 @@ export const anamnesisRouter = router({
         patientEmail: ctx.user.email || "",
         conditionType: input.conditionType,
         reportType: "inzicht_rapport",
-        reportId: insertedId,
+        reportId: insertedReportId,
         reportData: {
           title: `Holistische Gezondheidsanalyse - ${input.conditionType}`,
           content: inzichtRapport.content,
@@ -103,7 +109,6 @@ export const anamnesisRouter = router({
         console.warn(`[Rapport] Email send failed after ${Date.now() - emailStart}ms:`, err);
       });
 
-      // Also notify via Manus notification
       try {
         const conditionLabels: Record<string, string> = {
           chronic_fatigue: "Chronische Vermoeidheid",
@@ -140,7 +145,6 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
     .query(async ({ ctx }) => {
       const reports = await getUserReports(ctx.user.id);
       
-      // Normalize each report to ensure content and JSON fields are correct
       return reports.map((report: any) => {
         let content = report.content || "";
         let summary = report.summary || "";
@@ -149,7 +153,6 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
         let protocols = parseArrayField(report.protocols);
         let scientificReferences = parseArrayField(report.scientificReferences);
         
-        // If content looks like a full JSON object, extract the fields
         if (typeof content === 'string' && (content.startsWith('{') || content.startsWith('['))) {
           try {
             const parsed = JSON.parse(content);
@@ -184,7 +187,6 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      // Verify report belongs to user
       const existing = await db.select().from(reports)
         .where(and(eq(reports.id, input.id), eq(reports.userId, ctx.user.id)))
         .limit(1);
@@ -195,7 +197,6 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
       return { success: true };
     }),
 
-  // Regenerate the latest report using the existing anamnesis data
   regenerateLatestReport: protectedProcedure
     .mutation(async ({ ctx }) => {
       const mutationId = Math.random().toString(36).substring(7);
@@ -208,18 +209,17 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
       console.log(`${'='.repeat(80)}\n`);
       
       try {
-        // Step 1: Database connection
         const step1Start = Date.now();
         console.log(`[RAPPORT-${mutationId}] STEP 1: Connecting to database...`);
         const db = await getDb();
         if (!db) throw new Error("Database not available");
         console.log(`[RAPPORT-${mutationId}] ✓ Step 1 completed in ${Date.now() - step1Start}ms\n`);
 
-        // Step 2: Fetch anamnesis
         const step2Start = Date.now();
         console.log(`[RAPPORT-${mutationId}] STEP 2: Fetching latest anamnesis...`);
         const latestAnamnesis = await db.select().from(anamnesis)
           .where(eq(anamnesis.userId, ctx.user.id))
+          .orderBy(desc(anamnesis.id))
           .limit(1);
         console.log(`[RAPPORT-${mutationId}] ✓ Step 2 completed in ${Date.now() - step2Start}ms`);
         console.log(`[RAPPORT-${mutationId}] Found ${latestAnamnesis.length} anamnesis records\n`);
@@ -232,13 +232,11 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
         const anamnesisData = latestAnamnesis[0];
         console.log(`[RAPPORT-${mutationId}] Condition: ${anamnesisData.conditionType}, ID: ${anamnesisData.id}\n`);
 
-        // Step 3: Delete old reports
         const step3Start = Date.now();
         console.log(`[RAPPORT-${mutationId}] STEP 3: Deleting old reports...`);
         await db.delete(reports).where(eq(reports.userId, ctx.user.id));
         console.log(`[RAPPORT-${mutationId}] ✓ Step 3 completed in ${Date.now() - step3Start}ms\n`);
 
-        // Step 4: Generate report via LLM
         const step4Start = Date.now();
         console.log(`[RAPPORT-${mutationId}] STEP 4: Generating report via LLM...`);
         const inzichtRapport = await generateInzichtRapport(
@@ -250,10 +248,9 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
         console.log(`[RAPPORT-${mutationId}] ✓ Step 4 completed in ${step4Duration}ms`);
         console.log(`[RAPPORT-${mutationId}] Content length: ${inzichtRapport.content?.length || 0} chars\n`);
 
-        // Step 5: Save report
         const step5Start = Date.now();
         console.log(`[RAPPORT-${mutationId}] STEP 5: Saving report to database...`);
-        const result = await saveReport(ctx.user.id, anamnesisData.id, {
+        await saveReport(ctx.user.id, anamnesisData.id, {
           reportType: "inzicht_rapport",
           title: `Holistische Gezondheidsanalyse - ${anamnesisData.conditionType}`,
           content: inzichtRapport.content,
@@ -264,11 +261,17 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
           scientificReferences: inzichtRapport.scientificReferences,
         });
         const step5Duration = Date.now() - step5Start;
-        const insertedId = (result as any).insertId ? (result as any).insertId : 0;
+
+        // Haal het echte rapport ID op na insert
+        const latestReport = await db.select().from(reports)
+          .where(eq(reports.userId, ctx.user.id))
+          .orderBy(desc(reports.id))
+          .limit(1);
+        const insertedId = latestReport[0]?.id ?? 0;
+
         console.log(`[RAPPORT-${mutationId}] ✓ Step 5 completed in ${step5Duration}ms`);
         console.log(`[RAPPORT-${mutationId}] Report ID: ${insertedId}\n`);
 
-        // Step 5.5: Generate and store PDF
         const pdfStep5Start = Date.now();
         console.log(`[RAPPORT-${mutationId}] STEP 5.5: Generating and storing PDF...`);
         const pdfUrl = await generateAndStorePDF(insertedId, {
@@ -285,17 +288,15 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
         }, ctx.user.id);
         const pdfStep5Duration = Date.now() - pdfStep5Start;
         if (pdfUrl) {
-          console.log(`[RAPPORT-${mutationId}] ✓ Step 5.5 completed in ${pdfStep5Duration}ms, PDF URL: ${pdfUrl}`);
+          console.log(`[RAPPORT-${mutationId}] ✓ Step 5.5 completed in ${pdfStep5Duration}ms, PDF opgeslagen`);
         } else {
           console.warn(`[RAPPORT-${mutationId}] ⚠️ Step 5.5 failed in ${pdfStep5Duration}ms - PDF generation failed`);
         }
 
-        // Time before email
         const timeBeforeEmail = Date.now() - mutationStartTime;
         console.log(`[RAPPORT-${mutationId}] ⏱️ TIME BEFORE EMAIL: ${timeBeforeEmail}ms`);
         console.log(`[RAPPORT-${mutationId}] Breakdown: LLM=${step4Duration}ms, Save=${step5Duration}ms\n`);
 
-        // Step 6: Trigger email (fire and forget)
         const origin = (ctx.req.headers.origin as string) || "https://ai.holistischadviseur.nl";
         const emailStart = Date.now();
         console.log(`[RAPPORT-${mutationId}] STEP 6: Triggering email send (non-blocking)...\n`);
@@ -348,24 +349,18 @@ async function generateInzichtRapport(
 ) {
   const conditionKnowledge = getConditionSpecificKnowledge(conditionType);
   
-  // Build a readable summary of the patient's responses
   const responseLines = Object.entries(responses)
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `- ${k}: ${v}`)
     .join('\n');
 
-  // ── INPUT NORMALIZATION LAYER ──────────────────────────────────────────────
-  // Extract all string values from responses as raw symptom inputs
   const rawSymptomInputs: string[] = Object.values(responses)
     .filter((v): v is string => typeof v === 'string' && v.trim().length > 2)
     .flatMap(v => v.split(/[,;.\n]+/).map(s => s.trim()).filter(s => s.length > 2));
 
-  // Run normalization pipeline
   const rawNormalized = normalizeInput(rawSymptomInputs);
-  // Filter out low-confidence signals (threshold 0.60)
   const normalized = filterByConfidence(rawNormalized, 0.60);
 
-  // Build normalized context for the AI prompt
   const highConfidenceList = normalized.high_confidence_symptoms.length > 0
     ? normalized.high_confidence_symptoms
         .sort((a, b) => b.confidence - a.confidence)
@@ -391,14 +386,11 @@ async function generateInzichtRapport(
     : '';
 
   console.log(`[Normalization] total_confidence: ${normalized.total_confidence}, symptoms: ${normalized.symptoms.length}, clusters: ${normalized.clusters.length}`);
-  // ─────────────────────────────────────────────────────────────────────────
 
   try {
     const startTime = Date.now();
     console.log(`[Rapport] Starting generateInzichtRapport for ${conditionType}`);
     
-    // Single LLM call: generate ONLY plain text narrative
-    // No JSON, no structured output, no response_format
     const llmStartTime = Date.now();
     const llmResponse = await invokeLLM({
       messages: [
@@ -479,26 +471,21 @@ Gebruik de naam ${userName}. Schrijf warm, persoonlijk en wetenschappelijk onder
     
     let finalContent = llmResponse.choices[0]?.message?.content;
     
-    // Validate: content must be a non-empty string
     if (!finalContent || typeof finalContent !== 'string' || finalContent.trim().length < 50) {
       throw new Error('LLM returned empty or too-short content');
     }
     
     finalContent = finalContent.trim();
     
-    // Safety check: if content looks like JSON (starts with { or [), it's wrong
-    // In that case use the fallback
     if (finalContent.startsWith('{') || finalContent.startsWith('[')) {
       console.error('[Report] ERROR: LLM returned JSON instead of text! Content starts with:', finalContent.substring(0, 50));
       throw new Error('LLM returned JSON instead of plain text');
     }
     
-    // Strip any accidental markdown code fences
     finalContent = finalContent.replace(/^```[\w]*\n?/gm, '').replace(/^```$/gm, '').trim();
     
     console.log('[Report] SUCCESS - content length:', finalContent.length, 'starts with:', finalContent.substring(0, 60));
     
-    // Generate simple structured data based on condition type (no LLM needed)
     const structuredData = getDefaultStructuredData(conditionType, userName);
     
     return {
