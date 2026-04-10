@@ -10,6 +10,9 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { clerkMiddleware } from "@clerk/express";
+import { getDb } from "../db";
+import { reports } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +41,31 @@ async function startServer() {
 
   app.post("/api/clerk-webhook", (req, res) => {
     res.sendStatus(200);
+  });
+
+  app.get("/api/pdf/:id", async (req, res) => {
+    try {
+      const db = await getDb();
+      if (!db) return res.status(500).send("Database niet beschikbaar");
+
+      const report = await db.select().from(reports)
+        .where(eq(reports.id, parseInt(req.params.id)))
+        .limit(1);
+
+      if (!report.length || !report[0].pdfUrl) {
+        return res.status(404).send("PDF niet gevonden");
+      }
+
+      const base64Data = report[0].pdfUrl.replace("data:application/pdf;base64,", "");
+      const pdfBuffer = Buffer.from(base64Data, "base64");
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="rapport-${req.params.id}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (err) {
+      console.error("[PDF] Fout bij ophalen PDF:", err);
+      res.status(500).send("Fout bij ophalen PDF");
+    }
   });
 
   app.use(
