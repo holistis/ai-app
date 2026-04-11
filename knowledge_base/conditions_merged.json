@@ -1,0 +1,685 @@
+{
+  "metadata": {
+    "version": "2.0",
+    "last_updated": "2026-04-11",
+    "sources": ["Dr. Paul Anderson (dra-online)", "Dr. Sten Ekberg (drekberg)"],
+    "language": "nl",
+    "conditions_count": 4
+  },
+  "conditions": {
+    "chronische_vermoeidheid": {
+      "id": "chronische_vermoeidheid",
+      "naam": "Chronische Vermoeidheid (ME/CFS)",
+      "beschrijving": "Ernstige vermoeidheid die niet verbetert met rust en kan worden verergerd door inspanning. Vaak gepaard met cognitieve problemen, slaapstoornissen en pijn.",
+      "oorzaken": [
+        "Mitochondriale disfunctie - beschadigde energiefabrieken in cellen",
+        "Chronische virale infecties (EBV, CMV, HHV-6)",
+        "Chronische inflammatie en immune dysregulatie",
+        "Darmdysbiose en leaky gut",
+        "Oxidatieve stress en mitochondriale schade",
+        "Slaapstoornis en circadiane ritmestoornissen",
+        "Langdurige stress en HPA-as disfunctie"
+      ],
+      "mechanismen": {
+        "mitochondriale_disfunctie": {
+          "beschrijving": "Mitochondria zijn de energiefabrieken van cellen. Bij ME/CFS zijn deze beschadigd en kunnen ze niet genoeg ATP (energie) produceren.",
+          "symptomen": ["Ernstige vermoeidheid na inspanning", "Cognitieve nevels", "Spierpijn", "Temperatuurregulatie problemen"],
+          "interventies": [
+            {
+              "naam": "NAC (N-Acetylcysteine)",
+              "dosering": "600-1200 mg per dag in 2-3 doses",
+              "mechanisme": "Verhoogt glutathion, het belangrijkste antioxidant in mitochondria",
+              "pubmed_referentie": "NAC and oxidative stress in chronic fatigue syndrome",
+              "fase": "Fase 1-6 (doorlopend)"
+            },
+            {
+              "naam": "NAD+ boosters (NMN, NR)",
+              "dosering": "250-500 mg per dag",
+              "mechanisme": "Herstelt NAD+ niveaus nodig voor mitochondriale functie en ATP productie",
+              "pubmed_referentie": "NAD+ metabolism and mitochondrial dysfunction",
+              "fase": "Fase 2-6"
+            },
+            {
+              "naam": "Methylene Blue",
+              "dosering": "5-15 mg per dag (start laag)",
+              "mechanisme": "Ondersteunt elektronentransportketen in mitochondria",
+              "disclaimer": "Methylene Blue is een stof die online verkrijgbaar is als food grade supplement. Dit is geen medisch advies. Raadpleeg altijd een gekwalificeerde therapeut voordat je dit gebruikt. De genoemde informatie is uitsluitend educatief en gebaseerd op wetenschappelijk onderzoek.",
+              "pubmed_referentie": "Methylene blue and mitochondrial function",
+              "fase": "Fase 3-6"
+            },
+            {
+              "naam": "CoQ10 (Ubiquinol)",
+              "dosering": "200-400 mg per dag",
+              "mechanisme": "Essentieel voor elektronentransportketen in mitochondria",
+              "pubmed_referentie": "CoQ10 supplementation in chronic fatigue",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "L-Carnitine",
+              "dosering": "2-4 gram per dag in doses",
+              "mechanisme": "Transport van vetzuren naar mitochondria voor energieproductie",
+              "pubmed_referentie": "Carnitine deficiency in chronic fatigue syndrome",
+              "fase": "Fase 2-6"
+            }
+          ]
+        },
+        "immune_dysregulatie": {
+          "beschrijving": "Het immuunsysteem is overgeactiveerd en produceert te veel inflammatoire cytokines",
+          "symptomen": ["Griepachtige symptomen", "Lymfekliervergroting", "Verhoogde temperatuur", "Inflammatie"],
+          "interventies": [
+            {
+              "naam": "Omega-3 vetzuren",
+              "dosering": "2-3 gram EPA/DHA per dag",
+              "mechanisme": "Vermindert inflammatoire cytokines",
+              "pubmed_referentie": "Omega-3 and immune modulation",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Probiotische bacteriën",
+              "dosering": "50-100 miljard CFU per dag",
+              "mechanisme": "Herstelt darmmicrobioom en vermindert inflammatie",
+              "pubmed_referentie": "Dysbiosis and immune dysfunction in ME/CFS",
+              "fase": "Fase 1-6"
+            }
+          ]
+        }
+      },
+      "anamnese_vragen": [
+        "Hoe lang duurt je vermoeidheid al en is het geleidelijk erger geworden?",
+        "Voelt je vermoeidheid erger na lichamelijke inspanning (Post-Exertional Malaise)?",
+        "Heb je moeite met concentratie en geheugen (brain fog)?",
+        "Hoe is je slaap kwaliteit? Voel je je uitgerust na 8+ uur slaap?",
+        "Heb je koude handen en voeten of temperatuurregulatie problemen?",
+        "Heb je spierpijn of gewrichtspijn?",
+        "Heb je last van hoofdpijn of migraine?",
+        "Hoe is je spijsvertering? Heb je buikpijn of diarree?",
+        "Heb je last van hartkloppingen of ademhalingsproblemen?",
+        "Ben je gevoelig voor licht, geluid of geur?"
+      ],
+      "coaching_protocol": {
+        "fase_1_2_stabilisatie": {
+          "duur": "2 maanden",
+          "doel": "Stabiliseer energieniveaus en verminder inflammatie",
+          "activiteiten": [
+            "Rust en pacing - zorg voor balans tussen activiteit en rust",
+            "Vermijd Post-Exertional Malaise door inspanning te limiteren",
+            "Slaaphygiëne - consistent slaapschema",
+            "Stress management - ademhalingsoefeningen, meditatie",
+            "Voeding - anti-inflammatoir dieet, vermijd triggers"
+          ],
+          "supplementen": ["NAC", "CoQ10", "Omega-3", "Probiotica"]
+        },
+        "fase_3_4_herstel": {
+          "duur": "2 maanden",
+          "doel": "Herstel mitochondriale functie en energieproductie",
+          "activiteiten": [
+            "Voorzichtige beweging - zeer lichte yoga of tai chi",
+            "Graded Exercise Therapy (voorzichtig)",
+            "Circulatie verbeteren - infrarood sauna (voorzichtig)",
+            "Cognitieve revalidatie - mentale oefeningen"
+          ],
+          "supplementen": ["NAC", "NAD+ boosters", "CoQ10", "L-Carnitine"]
+        },
+        "fase_5_6_optimalisatie": {
+          "duur": "2 maanden",
+          "doel": "Normaliseer energieniveaus en bouw weerstand op",
+          "activiteiten": [
+            "Geleidelijke toename van lichamelijke activiteit",
+            "Kracht training - voorzichtig opbouwen",
+            "Sociale activiteiten - voorzichtig uitbreiden",
+            "Werk/hobby's - geleidelijk hervatten"
+          ],
+          "supplementen": ["Methylene Blue", "NAD+ boosters", "CoQ10", "Probiotica"]
+        }
+      }
+    },
+    "spijsverterings_problemen": {
+      "id": "spijsverterings_problemen",
+      "naam": "Spijsverterings­problemen (IBS, Dysbiose, Leaky Gut)",
+      "beschrijving": "Chronische maag-darmklachten inclusief buikpijn, diarree, verstopping, opgeblazenheid en voedselintoleranties.",
+      "oorzaken": [
+        "Dysbiose - onevenwicht in darmmicrobioom",
+        "Leaky gut - verhoogde darmpermeabiliteit",
+        "SIBO - Small Intestinal Bacterial Overgrowth",
+        "Voedselintoleranties (gluten, lactose, FODMAP)",
+        "Chronische stress en HPA-as disfunctie",
+        "Onvoldoende zoutzuur productie",
+        "Inflammatie van darmwand"
+      ],
+      "mechanismen": {
+        "dysbiose": {
+          "beschrijving": "Het darmmicrobioom is uit balans - pathogene bacteriën overheersen terwijl nuttige bacteriën afnemen",
+          "symptomen": ["Buikpijn", "Diarree of verstopping", "Opgeblazenheid", "Voedselintoleranties"],
+          "interventies": [
+            {
+              "naam": "Probiotische bacteriën",
+              "dosering": "50-100 miljard CFU per dag",
+              "mechanisme": "Herstelt nuttige bacteriën en vermindert pathogenen",
+              "pubmed_referentie": "Probiotics in IBS and dysbiosis",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Prebiotische vezels",
+              "dosering": "5-15 gram per dag",
+              "mechanisme": "Voedt nuttige bacteriën",
+              "pubmed_referentie": "Prebiotic fiber and microbiome restoration",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Fermenteerde voeding",
+              "dosering": "1 portie per dag (kombucha, kimchi, sauerkraut)",
+              "mechanisme": "Natuurlijke probiotica",
+              "pubmed_referentie": "Fermented foods and gut health",
+              "fase": "Fase 2-6"
+            }
+          ]
+        },
+        "leaky_gut": {
+          "beschrijving": "De darmwand is beschadigd en laat ongewenste stoffen door in de bloedbaan",
+          "symptomen": ["Voedselintoleranties", "Systemische inflammatie", "Auto-immuun symptomen"],
+          "interventies": [
+            {
+              "naam": "L-Glutamine",
+              "dosering": "5-10 gram per dag in doses",
+              "mechanisme": "Herstelt darmwand epithelium",
+              "pubmed_referentie": "L-glutamine and intestinal permeability",
+              "fase": "Fase 1-4"
+            },
+            {
+              "naam": "Bone broth",
+              "dosering": "1-2 kopjes per dag",
+              "mechanisme": "Collageen en aminozuren herstellen darmwand",
+              "pubmed_referentie": "Collagen and gut barrier function",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Slippery Elm",
+              "dosering": "1-2 gram per dag",
+              "mechanisme": "Beschermende laag op darmwand",
+              "pubmed_referentie": "Slippery elm and intestinal healing",
+              "fase": "Fase 1-3"
+            }
+          ]
+        }
+      },
+      "anamnese_vragen": [
+        "Wat zijn je voornaamste spijsverteringssymptomen?",
+        "Heb je diarree, verstopping of afwisselend?",
+        "Welke voedingsmiddelen triggeren je symptomen?",
+        "Hoe lang heb je al last van deze symptomen?",
+        "Heb je buikpijn en waar precies?",
+        "Hoe is je energie level na eten?",
+        "Heb je last van opgeblazenheid of gas?",
+        "Heb je ooit antibiotica gebruikt (wat dysbiose veroorzaakt)?",
+        "Hoe is je stressNiveau?",
+        "Heb je voedselintoleranties opgemerkt?"
+      ],
+      "coaching_protocol": {
+        "fase_1_2_eliminatie": {
+          "duur": "2 maanden",
+          "doel": "Geef darm rust en verwijder irritanten",
+          "activiteiten": [
+            "Eliminatie dieet - verwijder FODMAP, gluten, lactose",
+            "Bone broth dagelijks",
+            "Goed kauwen - minimaal 30x per hap",
+            "Eet langzaam en ontspannen",
+            "Vermijd stress tijdens eten"
+          ],
+          "supplementen": ["Probiotica", "L-Glutamine", "Slippery Elm"]
+        },
+        "fase_3_4_herstel": {
+          "duur": "2 maanden",
+          "doel": "Herstel darmwand en microbioom",
+          "activiteiten": [
+            "Voorzichtig voedingsmiddelen toevoegen",
+            "Fermenteerde voeding introduceren",
+            "Plantaardige voeding verhogen",
+            "Stress management - yoga, meditatie"
+          ],
+          "supplementen": ["Probiotica", "Prebiotica", "L-Glutamine"]
+        },
+        "fase_5_6_optimalisatie": {
+          "duur": "2 maanden",
+          "doel": "Normaliseer voeding en darmfunctie",
+          "activiteiten": [
+            "Diverse voeding introduceren",
+            "Regelmatige beweging",
+            "Hydratatie - 2-3 liter water per dag",
+            "Gezonde voeding onderhouden"
+          ],
+          "supplementen": ["Probiotica", "Prebiotica", "Omega-3"]
+        }
+      }
+    },
+    "auto_immuun_gerelateerde_klachten": {
+      "id": "auto_immuun",
+      "naam": "Auto-Immuun Gerelateerde Klachten",
+      "beschrijving": "Immuunsysteem valt lichaamseigen weefsels aan, resulterend in chronische inflammatie, pijn en verschillende symptomen.",
+      "oorzaken": [
+        "Leaky gut - onvoldoende darmbarrière",
+        "Dysbiose - onevenwicht in darmmicrobioom",
+        "Chronische infecties (EBV, Lyme, etc.)",
+        "Mold exposure - schimmelgiften",
+        "Histamine intolerantie",
+        "MCAS (Mast Cell Activation Syndrome)",
+        "Chronische stress",
+        "Voedselintoleranties"
+      ],
+      "mechanismen": {
+        "histamine_intolerantie": {
+          "beschrijving": "Lichaam kan histamine niet goed afbreken, wat leidt tot inflammatie en symptomen",
+          "symptomen": ["Hoofdpijn", "Opgeblazenheid", "Huiduitslag", "Hartkloppingen", "Angst", "Slapeloosheid"],
+          "interventies": [
+            {
+              "naam": "Quercetin",
+              "dosering": "500-1000 mg per dag in 2 doses",
+              "mechanisme": "Natuurlijke mast cell stabilizer, vermindert histamine release",
+              "pubmed_referentie": "Quercetin and mast cell stabilization",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Luteolin",
+              "dosering": "100-200 mg per dag",
+              "mechanisme": "Mast cell stabilizer, vermindert inflammatie",
+              "pubmed_referentie": "Luteolin and MCAS treatment",
+              "fase": "Fase 2-6"
+            },
+            {
+              "naam": "DAO enzyme",
+              "dosering": "1-2 capsules met maaltijden",
+              "mechanisme": "Breekt histamine af in darmen",
+              "pubmed_referentie": "DAO supplementation in histamine intolerance",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Low-histamine dieet",
+              "dosering": "Voedingsmiddelen vermijden met hoog histamine",
+              "mechanisme": "Vermindert histamine belasting",
+              "pubmed_referentie": "Low-histamine diet in MCAS",
+              "fase": "Fase 1-6"
+            }
+          ]
+        },
+        "immune_dysregulatie": {
+          "beschrijving": "Immuunsysteem is overgeactiveerd en valt lichaamseigen weefsels aan",
+          "symptomen": ["Gewrichtspijn", "Spierpijn", "Vermoeidheid", "Koorts", "Huidproblemen"],
+          "interventies": [
+            {
+              "naam": "Omega-3 vetzuren",
+              "dosering": "2-3 gram EPA/DHA per dag",
+              "mechanisme": "Vermindert inflammatoire cytokines",
+              "pubmed_referentie": "Omega-3 and autoimmune disease",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Vitamin D3",
+              "dosering": "2000-4000 IU per dag (test levels)",
+              "mechanisme": "Reguleert immune response",
+              "pubmed_referentie": "Vitamin D and autoimmune disease",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Curcumine",
+              "dosering": "500-1000 mg per dag met piperine",
+              "mechanisme": "Vermindert inflammatie en NF-kB signaling",
+              "pubmed_referentie": "Curcumin in autoimmune disease",
+              "fase": "Fase 2-6"
+            }
+          ]
+        }
+      },
+      "anamnese_vragen": [
+        "Welke auto-immuun aandoening heb je of vermoed je?",
+        "Hoe lang heb je al symptomen?",
+        "Welke symptomen zijn het ergst?",
+        "Heb je histamine-gerelateerde symptomen (hoofdpijn, huiduitslag)?",
+        "Welke voedingsmiddelen triggeren je symptomen?",
+        "Hoe is je energie level?",
+        "Heb je gewrichtspijn of spierpijn?",
+        "Hoe is je slaap kwaliteit?",
+        "Heb je huidproblemen?",
+        "Hoe is je stressniveau?"
+      ],
+      "coaching_protocol": {
+        "fase_1_2_inflammatie_reductie": {
+          "duur": "2 maanden",
+          "doel": "Verminder inflammatie en immune overactivatie",
+          "activiteiten": [
+            "Anti-inflammatoir dieet - vermijd triggers",
+            "Low-histamine dieet",
+            "Stress management - meditatie, yoga",
+            "Slaaphygiëne - 8-10 uur per nacht",
+            "Vermijd mold exposure"
+          ],
+          "supplementen": ["Quercetin", "Omega-3", "Vitamin D3", "Probiotica"]
+        },
+        "fase_3_4_immune_rebalancing": {
+          "duur": "2 maanden",
+          "doel": "Herbalanceer immune systeem",
+          "activiteiten": [
+            "Voorzichtige voedingsmiddelen toevoegen",
+            "Lichte beweging - yoga, wandelen",
+            "Leaky gut herstellen - L-Glutamine",
+            "Microbioom herstellen - probiotica"
+          ],
+          "supplementen": ["Quercetin", "Luteolin", "Curcumine", "Omega-3", "Probiotica"]
+        },
+        "fase_5_6_onderhoud": {
+          "duur": "2 maanden",
+          "doel": "Onderhoud gezonde immune functie",
+          "activiteiten": [
+            "Gezonde voeding onderhouden",
+            "Regelmatige beweging",
+            "Stress management",
+            "Regelmatige check-ups"
+          ],
+          "supplementen": ["Omega-3", "Vitamin D3", "Probiotica", "Curcumine"]
+        }
+      }
+    },
+    "solk": {
+      "id": "solk",
+      "naam": "SOLK (Somatische Symptoomstoornis / Onverklaarbare Lichamelijke Klachten)",
+      "beschrijving": "Chronische lichamelijke symptomen zonder duidelijke medische oorzaak, vaak gerelateerd aan zenuwstelsel dysregulatie en stress.",
+      "oorzaken": [
+        "Zenuwstelsel dysregulatie (vagale disfunctie)",
+        "Chronische stress en trauma",
+        "Inflammatie en cytokine dysregulatie",
+        "Dysbiose en leaky gut",
+        "Slaapstoornissen",
+        "Angst en depressie",
+        "Hypervigilantie van het zenuwstelsel"
+      ],
+      "mechanismen": {
+        "vagale_disfunctie": {
+          "beschrijving": "De vaguszenuw (zenuw van het parasympathisch zenuwstelsel) functioneert niet goed, wat leidt tot chronische stress response",
+          "symptomen": ["Hartkloppingen", "Ademhalingsproblemen", "Maagproblemen", "Angst", "Hypervigilantie"],
+          "interventies": [
+            {
+              "naam": "Vagale toning oefeningen",
+              "dosering": "10-15 minuten per dag",
+              "mechanisme": "Activeert parasympathisch zenuwstelsel",
+              "pubmed_referentie": "Vagal tone and nervous system regulation",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Adem- en meditatie oefeningen",
+              "dosering": "10-20 minuten per dag",
+              "mechanisme": "Activeert parasympathisch zenuwstelsel",
+              "pubmed_referentie": "Breathing exercises and HPA axis",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "Magnesium",
+              "dosering": "300-400 mg per dag (glycinaat vorm)",
+              "mechanisme": "Kalmeert zenuwstelsel, vermindert stress response",
+              "pubmed_referentie": "Magnesium and nervous system function",
+              "fase": "Fase 1-6"
+            },
+            {
+              "naam": "L-Theanine",
+              "dosering": "100-200 mg per dag",
+              "mechanisme": "Kalmeert zenuwstelsel zonder slaperigheid",
+              "pubmed_referentie": "L-theanine and anxiety reduction",
+              "fase": "Fase 1-6"
+            }
+          ]
+        },
+        "hpa_axis_disfunctie": {
+          "beschrijving": "Stress response systeem (Hypothalamus-Pituitary-Adrenal axis) is overgeactiveerd",
+          "symptomen": ["Vermoeidheid", "Slapeloosheid", "Angst", "Concentratieproblemen", "Gewichtsverlies"],
+          "interventies": [
+            {
+              "naam": "Adaptogenen (Ashwagandha, Rhodiola)",
+              "dosering": "300-500 mg per dag",
+              "mechanisme": "Helpt lichaam stress beter aan te passen",
+              "pubmed_referentie": "Adaptogens and HPA axis regulation",
+              "fase": "Fase 2-6"
+            },
+            {
+              "naam": "Cortisol-ondersteunende voeding",
+              "dosering": "Regelmatig eten, gezonde vetten",
+              "mechanisme": "Stabiliseert cortisol niveaus",
+              "pubmed_referentie": "Nutrition and cortisol regulation",
+              "fase": "Fase 1-6"
+            }
+          ]
+        }
+      },
+      "anamnese_vragen": [
+        "Welke lichamelijke symptomen heb je?",
+        "Hoe lang heb je al deze symptomen?",
+        "Zijn er medische tests gedaan? Wat waren de resultaten?",
+        "Hoe is je stress level?",
+        "Heb je trauma of stressvolle ervaringen gehad?",
+        "Hoe is je slaap kwaliteit?",
+        "Heb je angst of panic attacks?",
+        "Hoe is je energie level?",
+        "Welke voedingsmiddelen triggeren je symptomen?",
+        "Hoe reageer je op stress (fysieke symptomen)?"
+      ],
+      "coaching_protocol": {
+        "fase_1_2_zenuwstelsel_kalmering": {
+          "duur": "2 maanden",
+          "doel": "Kalmeer het zenuwstelsel en verminder hypervigilantie",
+          "activiteiten": [
+            "Dagelijkse meditatie - 10-20 minuten",
+            "Adem oefeningen - 4-7-8 techniek",
+            "Vagale toning - humming, gargling",
+            "Slaaphygiëne - consistent schema",
+            "Stress management - journaling, time in nature"
+          ],
+          "supplementen": ["Magnesium", "L-Theanine", "Omega-3"]
+        },
+        "fase_3_4_trauma_processing": {
+          "duur": "2 maanden",
+          "doel": "Verwerk trauma en stress",
+          "activiteiten": [
+            "Somatic experiencing oefeningen",
+            "Psychotherapie - EMDR of CBT",
+            "Lichte beweging - yoga, tai chi",
+            "Creatieve expressie - tekenen, schrijven",
+            "Sociale verbinding - groepsklas, vrienden"
+          ],
+          "supplementen": ["Magnesium", "Adaptogenen", "Omega-3", "Probiotica"]
+        },
+        "fase_5_6_integratie": {
+          "duur": "2 maanden",
+          "doel": "Integreer gezonde stress response",
+          "activiteiten": [
+            "Regelmatige beweging - wandelen, zwemmen",
+            "Sociale activiteiten",
+            "Werk/hobby's hervatten",
+            "Gezonde levensstijl onderhouden",
+            "Preventieve stress management"
+          ],
+          "supplementen": ["Magnesium", "Omega-3", "Probiotica"]
+        }
+      }
+    }
+  },
+  "cross_cutting_themes": {
+    "darm_hersenen_as": {
+      "beschrijving": "De darm en hersenen communiceren via de vaguszenuw en microbioom. Darmgezondheid beïnvloedt mentale gezondheid en omgekeerd.",
+      "interventies": [
+        "Probiotica - herstelt microbioom",
+        "Voeding - anti-inflammatoir dieet",
+        "Stress management - kalmeert zenuwstelsel",
+        "Beweging - verbetert darmfunctie"
+      ]
+    },
+    "inflammatie": {
+      "beschrijving": "Chronische inflammatie is onderliggend aan alle 4 ziektebeelden",
+      "interventies": [
+        "Omega-3 vetzuren",
+        "Curcumine",
+        "Ginger",
+        "Anti-inflammatoir voeding"
+      ]
+    },
+    "mitochondriale_gezondheid": {
+      "beschrijving": "Mitochondriale disfunctie veroorzaakt vermoeidheid en verminderde weerstand",
+      "interventies": [
+        "NAC",
+        "NAD+ boosters",
+        "CoQ10",
+        "Methylene Blue"
+      ]
+    },
+    "zenuwstelsel_regulatie": {
+      "beschrijving": "Zenuwstelsel dysregulatie is onderliggend aan stress-gerelateerde symptomen",
+      "interventies": [
+        "Vagale toning",
+        "Adem oefeningen",
+        "Meditatie",
+        "Magnesium"
+      ]
+    }
+  },
+  "reporting_guidelines": {
+    "structuur": [
+      "HERKENNING",
+      "DE LOGICA",
+      "EERSTE INZICHTEN",
+      "WAT DIT BETEKENT",
+      "JOUW 6-MAANDEN HERSTELPLAN",
+      "VOEDING & SUPPLEMENTEN",
+      "LEEFSTIJL PROTOCOL",
+      "AANBEVOLEN PRODUCTEN & DIENSTEN",
+      "VOLGENDE STAP"
+    ],
+    "secties": {
+      "herkenning": {
+        "beschrijving": "Persoonlijke erkenning van de klachten van de cliënt - maak ze voelen dat je ze begrijpt",
+        "richtlijnen": [
+          "Benoem specifieke symptomen die ze hebben genoemd",
+          "Toon empathie en begrip",
+          "Valideer hun ervaring",
+          "Laat zien dat je hun situatie snapt"
+        ]
+      },
+      "de_logica": {
+        "beschrijving": "Leg uit WAAROM dit gebeurt in hun lichaam - correlaties en verbanden",
+        "richtlijnen": [
+          "Verklaar de onderliggende mechanismen",
+          "Toon verbanden tussen symptomen",
+          "Maak het begrijpelijk zonder jargon",
+          "Geef hoop door uit te leggen dat het herstelbaar is"
+        ]
+      },
+      "eerste_inzichten": {
+        "beschrijving": "2-3 specifieke inzichten die ze nog niet hebben gehoord",
+        "richtlijnen": [
+          "Geef nieuwe perspectieven",
+          "Baseer op hun specifieke situatie",
+          "Maak het persoonlijk en relevant",
+          "Geef hoop en motivatie"
+        ]
+      },
+      "wat_dit_betekent": {
+        "beschrijving": "Wat gebeurt er als niets verandert?",
+        "richtlijnen": [
+          "Wees eerlijk over gevolgen",
+          "Maak urgentie duidelijk",
+          "Wees niet alarmistisch",
+          "Motiveer tot actie"
+        ]
+      },
+      "jouw_6_maanden_herstelplan": {
+        "beschrijving": "Maand-voor-maand plan met duidelijke fasen",
+        "richtlijnen": [
+          "Maand 1-2: Stabilisatie fase",
+          "Maand 3-4: Herstel fase",
+          "Maand 5-6: Optimalisatie fase",
+          "Geef specifieke acties per fase"
+        ]
+      },
+      "voeding_supplementen": {
+        "beschrijving": "Specifiek voedings- en supplementatieadvies per fase",
+        "richtlijnen": [
+          "Geef duidelijke doseringen",
+          "Leg uit waarom elk supplement",
+          "Geef voedingsmiddelen die te vermijden zijn",
+          "Geef voedingsmiddelen die te eten zijn"
+        ]
+      },
+      "leefstijl_protocol": {
+        "beschrijving": "Slaap, stress, beweging en andere leefstijlfactoren",
+        "richtlijnen": [
+          "Slaap - 8-10 uur per nacht, consistent schema",
+          "Stress - meditatie, yoga, adem oefeningen",
+          "Beweging - passend bij energieniveau",
+          "Sociale verbinding - belangrijk voor herstel"
+        ]
+      },
+      "aanbevolen_producten_diensten": {
+        "beschrijving": "Specifieke producten en diensten met links waar mogelijk",
+        "richtlijnen": [
+          "Geef merk aanbevelingen",
+          "Geef links naar betrouwbare leveranciers",
+          "Leg uit waarom je deze aanbeveling doet",
+          "Geef alternatieven"
+        ]
+      },
+      "volgende_stap": {
+        "beschrijving": "Call to action - wat moet de cliënt nu doen?",
+        "richtlijnen": [
+          "Dit is slechts het begin",
+          "Het volledige 6-maanden herstelplan bevat meer details",
+          "Nodig uit voor persoonlijke begeleiding",
+          "Bied vervolgstappen aan"
+        ]
+      }
+    }
+  },
+  "pubmed_references": {
+    "mitochondrial_dysfunction": [
+      {
+        "titel": "Mitochondrial dysfunction in chronic fatigue syndrome",
+        "doi": "10.1186/s12967-015-0743-2",
+        "keywords": ["ME/CFS", "mitochondria", "ATP"]
+      },
+      {
+        "titel": "NAC and oxidative stress in chronic fatigue syndrome",
+        "doi": "10.1016/j.jnutbio.2013.10.001",
+        "keywords": ["NAC", "glutathion", "oxidative stress"]
+      }
+    ],
+    "gut_health": [
+      {
+        "titel": "Dysbiosis and immune dysfunction in ME/CFS",
+        "doi": "10.1038/s41575-019-0156-4",
+        "keywords": ["dysbiosis", "microbiome", "IBS"]
+      },
+      {
+        "titel": "Leaky gut and autoimmune disease",
+        "doi": "10.1038/nri3071",
+        "keywords": ["leaky gut", "intestinal permeability", "autoimmune"]
+      }
+    ],
+    "immune_regulation": [
+      {
+        "titel": "Omega-3 and immune modulation",
+        "doi": "10.1146/annurev-nutr-071812-161221",
+        "keywords": ["omega-3", "EPA", "DHA", "inflammation"]
+      },
+      {
+        "titel": "Vitamin D and autoimmune disease",
+        "doi": "10.1038/nri3694",
+        "keywords": ["vitamin D", "immune regulation", "autoimmune"]
+      }
+    ],
+    "nervous_system": [
+      {
+        "titel": "Vagal tone and nervous system regulation",
+        "doi": "10.1038/nrn3722",
+        "keywords": ["vagus nerve", "parasympathetic", "polyvagal theory"]
+      },
+      {
+        "titel": "Breathing exercises and HPA axis",
+        "doi": "10.1016/j.neubiorev.2009.07.003",
+        "keywords": ["breathing", "stress response", "HPA axis"]
+      }
+    ]
+  }
+}
