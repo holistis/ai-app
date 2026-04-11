@@ -20,13 +20,7 @@ export type InsertUser = typeof users.$inferInsert;
 export const anamnesis = mysqlTable("anamnesis", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  conditionType: mysqlEnum('conditionType', ['chronic_fatigue', 'digestive_issues', 'solk', 'auto_immuun', 'alk', 'other'])
-    "chronic_fatigue",
-    "digestive_issues",
-    "solk",
-    "alk",
-    "other"
-  ]).notNull(),
+  conditionType: mysqlEnum("conditionType", ["chronic_fatigue", "digestive_issues", "solk", "auto_immuun", "alk", "other"]).notNull(),
   responses: text("responses").notNull(),
   status: mysqlEnum("status", ["draft", "submitted", "analyzed"]).default("draft").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -48,7 +42,7 @@ export const reports = mysqlTable("reports", {
   recommendations: text("recommendations"),
   protocols: text("protocols"),
   scientificReferences: text("scientificReferences"),
-  pdfUrl: text("pdfUrl"),  // was varchar(255) — te klein voor base64 PDF
+  pdfUrl: text("pdfUrl"),
   status: mysqlEnum("status", ["draft", "generated", "sent"]).default("draft").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
