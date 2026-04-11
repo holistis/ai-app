@@ -5,7 +5,6 @@ import { eq, and } from "drizzle-orm";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -85,25 +84,56 @@ export async function getUserByOpenId(openId: string) {
   }
 
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// Anamnesis helpers
-export async function saveAnamnesis(userId: number, conditionType: string, responses: Record<string, any>) {
+// ─── ANAMNESIS ────────────────────────────────────────────────────────────────
+
+// Mappen van frontend conditionType naar wat in de DB enum staat
+// Als de DB geen enum heeft maar varchar, werkt dit ook gewoon
+const CONDITION_TYPE_MAP: Record<string, string> = {
+  chronic_fatigue: "chronic_fatigue",
+  digestive_issues: "digestive_issues",
+  solk: "solk",
+  auto_immuun: "auto_immuun",
+  alk: "alk",
+};
+
+function normalizeConditionType(conditionType: string): string {
+  return CONDITION_TYPE_MAP[conditionType] ?? conditionType;
+}
+
+export async function saveAnamnesis(
+  userId: number,
+  conditionType: string,
+  responses: Record<string, any>
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(anamnesis).values({
-    userId,
-    conditionType: conditionType as any,
-    responses: typeof responses === 'string' ? responses : JSON.stringify(responses),
-    status: "submitted",
-  });
-  
-  // Return the actual inserted ID
-  const insertedId = (result as any)[0]?.insertId ?? 1;
-  return [{ id: insertedId }];
+  const normalizedCondition = normalizeConditionType(conditionType);
+  const responsesJson =
+    typeof responses === "string" ? responses : JSON.stringify(responses ?? {});
+
+  console.log(`[DB] saveAnamnesis — userId: ${userId}, condition: ${normalizedCondition}, responses length: ${responsesJson.length}`);
+
+  try {
+    const result = await db.insert(anamnesis).values({
+      userId,
+      conditionType: normalizedCondition as any,
+      responses: responsesJson,
+      status: "submitted",
+    });
+
+    const insertedId = (result as any)[0]?.insertId ?? 1;
+    console.log(`[DB] saveAnamnesis OK — insertedId: ${insertedId}`);
+    return [{ id: insertedId }];
+  } catch (error: any) {
+    console.error(`[DB] saveAnamnesis FAILED:`, error?.message);
+    console.error(`[DB] conditionType was: "${normalizedCondition}"`);
+    console.error(`[DB] responses preview: ${responsesJson.substring(0, 200)}`);
+    throw error;
+  }
 }
 
 export async function getAnamnesisById(id: number) {
@@ -121,14 +151,15 @@ export async function getUserAnamnesis(userId: number) {
   return await db.select().from(anamnesis).where(eq(anamnesis.userId, userId));
 }
 
-// Report helpers
+// ─── REPORTS ──────────────────────────────────────────────────────────────────
+
 export async function saveReport(userId: number, anamnesisId: number, reportData: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const serializeField = (val: any): string | null => {
     if (val === null || val === undefined) return null;
-    if (typeof val === 'string') return val;
+    if (typeof val === "string") return val;
     return JSON.stringify(val);
   };
 
@@ -137,7 +168,10 @@ export async function saveReport(userId: number, anamnesisId: number, reportData
     anamnesisId,
     reportType: reportData.reportType,
     title: reportData.title,
-    content: typeof reportData.content === 'string' ? reportData.content : JSON.stringify(reportData.content),
+    content:
+      typeof reportData.content === "string"
+        ? reportData.content
+        : JSON.stringify(reportData.content),
     summary: reportData.summary ?? null,
     keyInsights: serializeField(reportData.keyInsights),
     recommendations: serializeField(reportData.recommendations),
@@ -159,35 +193,30 @@ export async function getUserReports(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // Get all reports for user
-  const userReports = await db.select().from(reports).where(eq(reports.userId, userId));
-  
-  // Get all completed payments for user
+  const userReports = await db
+    .select()
+    .from(reports)
+    .where(eq(reports.userId, userId));
+
   const userPayments = await db
     .select()
     .from(payments)
-    .where(
-      and(
-        eq(payments.userId, userId),
-        eq(payments.status, "completed")
-      )
-    );
-  
-  // Create a set of paid reportIds for quick lookup
+    .where(and(eq(payments.userId, userId), eq(payments.status, "completed")));
+
   const paidReportIds = new Set(
     userPayments
       .filter((p: any) => p.reportId)
       .map((p: any) => p.reportId)
   );
-  
-  // Add isPaid flag to each report
+
   return userReports.map((report: any) => ({
     ...report,
     isPaid: paidReportIds.has(report.id),
   }));
 }
 
-// Payment helpers
+// ─── PAYMENTS ─────────────────────────────────────────────────────────────────
+
 export async function savePayment(paymentData: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -199,7 +228,11 @@ export async function getPaymentByStripeId(stripePaymentIntentId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.select().from(payments).where(eq(payments.stripePaymentIntentId, stripePaymentIntentId)).limit(1);
+  const result = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.stripePaymentIntentId, stripePaymentIntentId))
+    .limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
@@ -210,7 +243,8 @@ export async function getUserPayments(userId: number) {
   return await db.select().from(payments).where(eq(payments.userId, userId));
 }
 
-// Coaching session helpers
+// ─── COACHING ─────────────────────────────────────────────────────────────────
+
 export async function createCoachingSession(userId: number, reportId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -228,7 +262,11 @@ export async function getCoachingSession(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.select().from(coachingSessions).where(eq(coachingSessions.id, id)).limit(1);
+  const result = await db
+    .select()
+    .from(coachingSessions)
+    .where(eq(coachingSessions.id, id))
+    .limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
@@ -236,11 +274,19 @@ export async function getUserCoachingSessions(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return await db.select().from(coachingSessions).where(eq(coachingSessions.userId, userId));
+  return await db
+    .select()
+    .from(coachingSessions)
+    .where(eq(coachingSessions.userId, userId));
 }
 
-// Patient progress helpers
-export async function recordProgress(userId: number, coachingSessionId: number, progressData: any) {
+// ─── PROGRESS ─────────────────────────────────────────────────────────────────
+
+export async function recordProgress(
+  userId: number,
+  coachingSessionId: number,
+  progressData: any
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -255,10 +301,14 @@ export async function getSessionProgress(coachingSessionId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return await db.select().from(patientProgress).where(eq(patientProgress.coachingSessionId, coachingSessionId));
+  return await db
+    .select()
+    .from(patientProgress)
+    .where(eq(patientProgress.coachingSessionId, coachingSessionId));
 }
 
-// Admin helpers
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
+
 export async function getAllReports() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -291,7 +341,10 @@ export async function updatePaymentStatus(paymentId: number, status: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return await db.update(payments).set({ status: status as any }).where(eq(payments.id, paymentId));
+  return await db
+    .update(payments)
+    .set({ status: status as any })
+    .where(eq(payments.id, paymentId));
 }
 
 export async function getUserByClerkId(clerkId: string) {
@@ -301,11 +354,19 @@ export async function getUserByClerkId(clerkId: string) {
     return null;
   }
 
-  const result = await db.select().from(users).where(eq(users.clerkId, clerkId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.clerkId, clerkId))
+    .limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
-export async function upsertUserFromClerk(clerkId: string, email: string, name: string) {
+export async function upsertUserFromClerk(
+  clerkId: string,
+  email: string,
+  name: string
+) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert user: database not available");
@@ -314,7 +375,7 @@ export async function upsertUserFromClerk(clerkId: string, email: string, name: 
 
   try {
     const existing = await getUserByClerkId(clerkId);
-    
+
     if (existing) {
       return await db
         .update(users)
