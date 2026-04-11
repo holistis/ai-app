@@ -20,7 +20,7 @@ export type InsertUser = typeof users.$inferInsert;
 export const anamnesis = mysqlTable("anamnesis", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  conditionType: mysqlEnum("conditionType", [
+  conditionType: mysqlEnum('conditionType', ['chronic_fatigue', 'digestive_issues', 'solk', 'auto_immuun', 'alk', 'other'])
     "chronic_fatigue",
     "digestive_issues",
     "solk",
