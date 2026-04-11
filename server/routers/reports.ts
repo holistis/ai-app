@@ -19,6 +19,7 @@ import {
   AI_KNOWLEDGE_BASE,
   getConditionSpecificKnowledge
 } from "../knowledge/holisticBase";
+import { HOLISTIC_SYSTEM_PROMPT, knowledgeBase } from "../_core/llm";
 
 export const reportsRouter = router({
   generateFullReport: protectedProcedure
@@ -269,7 +270,6 @@ async function generateFullReportContent(
     solk: "SOLK (Somatisch Onverklaarbare Lichamelijke Klachten)",
     alk: "ALK (Aspecifieke Lichamelijke Klachten)",
   };
-  // ✅ FIX 1: altijd de Nederlandse naam gebruiken, nooit de technische sleutel
   const conditionName = conditionLabel[conditionType] || conditionType;
 
   const stressLevel = responses.stress_level || responses.stressNiveau || "onbekend";
@@ -278,9 +278,47 @@ async function generateFullReportContent(
   const previousTreatments = responses.previous_treatments || responses.eerderePogingen || "";
   const medications = responses.medications || responses.medicatie || "";
 
+  // ============================================================
+  // KENNISBANK — haal conditionspecifieke kennis op uit conditions_merged.json
+  // ============================================================
+  const conditionKeyMap: Record<string, string> = {
+    chronic_fatigue: "chronische_vermoeidheid",
+    digestive_issues: "spijsverterings_problemen",
+    solk: "solk",
+    auto_immuun: "auto_immuun_gerelateerde_klachten",
+  };
+
+  const conditionKey = conditionKeyMap[conditionType];
+  const conditionData = knowledgeBase?.conditions?.[conditionKey] || null;
+  const crossThemes = knowledgeBase?.cross_cutting_themes || null;
+  const reportingGuidelines = knowledgeBase?.reporting_guidelines || null;
+
+  const kennisbankSectie = conditionData
+    ? `
+## KENNISBANK VOOR ${conditionName.toUpperCase()}
+
+### Oorzaken
+${conditionData.oorzaken?.join("\n- ")}
+
+### Anamnese vragen die al gesteld zijn
+${conditionData.anamnese_vragen?.join("\n- ")}
+
+### Coaching protocol
+${JSON.stringify(conditionData.coaching_protocol, null, 2)}
+
+### Mechanismen & Interventies
+${JSON.stringify(conditionData.mechanismen, null, 2)}
+
+### Overkoepelende thema's
+${JSON.stringify(crossThemes, null, 2)}
+`
+    : "";
+
   const prompt = `Je bent een holistische gezondheidsadviseur van Holistisch Adviseur (holistischadviseur.nl) met diepgaande kennis van voeding, leefstijl, darmgezondheid, de HPA-as, oxidatieve stress, mineraalbalans en natuurlijke genezing.
 
 ${AI_KNOWLEDGE_BASE}
+
+${kennisbankSectie}
 
 Je schrijft een VOLLEDIG BETAALD RAPPORT (€34,95) voor ${userName} met de klacht: ${conditionName}.
 
@@ -361,6 +399,11 @@ ${conditionKnowledge}
 ${REPORT_STRUCTURE}
 ${SLEEP_REBOOT_PROTOCOL}
 
+// ============================================================
+// UITGEBREIDE KENNISBANK (conditions_merged.json)
+// ============================================================
+${HOLISTIC_SYSTEM_PROMPT}
+
 BELANGRIJK: Gebruik nooit technische variabelenamen in de rapporttekst. Schrijf altijd in natuurlijk Nederlands.
 Je genereert altijd uitgebreide, wetenschappelijk onderbouwde rapporten van minimaal 1500 woorden.`,
         },
@@ -426,9 +469,7 @@ Je genereert altijd uitgebreide, wetenschappelijk onderbouwde rapporten van mini
       parsed.content = JSON.stringify(parsed.content);
     }
 
-    // ✅ FIX 2: zorg dat protocols altijd de juiste structuur heeft met named keys
     if (parsed.protocols) {
-      // Als protocols een array is of numeric keys heeft, herstel de structuur
       const isNumericKeys = Object.keys(parsed.protocols).every(k => !isNaN(Number(k)));
       if (Array.isArray(parsed.protocols) || isNumericKeys) {
         console.warn('[Full Report] protocols had wrong structure, using empty defaults');
@@ -439,7 +480,6 @@ Je genereert altijd uitgebreide, wetenschappelijk onderbouwde rapporten van mini
           mentalPractices: [],
         };
       }
-      // Zorg dat alle verwachte keys bestaan
       parsed.protocols.nutrition = parsed.protocols.nutrition || [];
       parsed.protocols.supplements = parsed.protocols.supplements || [];
       parsed.protocols.lifestyle = parsed.protocols.lifestyle || [];
@@ -472,10 +512,8 @@ function generatePDFContent(report: any): string {
     mentalPractices: "🧠 Mentale Praktijken",
   };
 
-  // ✅ FIX 2: sla numeric keys over, toon alleen named keys
   const protocolsHtml = Object.entries(protocols)
     .filter(([key]) => {
-      // Sla numeric keys over (dit zijn gebroken data structuren)
       const isNumeric = !isNaN(Number(key));
       return !isNumeric && protocolLabels[key];
     })
