@@ -5,24 +5,21 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { saveAnamnesis, saveReport, getUserReports, getDb } from "../db";
 import { reports, anamnesis } from "../../drizzle/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { 
-  AI_CORE_MINDSET, 
-  MULTI_LAYER_ANALYSIS, 
-  CORRELATION_ENGINE, 
-  VALIDATION_SYSTEM, 
-  HOLISTIC_CORE_PRINCIPLES, 
-  REPORT_STRUCTURE,
-  SLEEP_REBOOT_PROTOCOL,
+import {
+  AI_CORE_MINDSET,
+  MULTI_LAYER_ANALYSIS,
+  CORRELATION_ENGINE,
+  HOLISTIC_CORE_PRINCIPLES,
   AI_KNOWLEDGE_BASE,
-  getConditionSpecificKnowledge 
+  getConditionSpecificKnowledge
 } from "../knowledge/holisticBase";
-import { invokeLLM } from "../_core/llm";
+import { invokeLLM, knowledgeBase } from "../_core/llm";
 import { notifyOwner } from "../_core/notification";
 import { sendReportEmails } from "../_core/email";
-import { normalizeInput, filterByConfidence } from "../knowledge/input_normalization";
 import { generateAndStorePDF } from "./pdf-generation";
 
-// ✅ Centrale plek voor Nederlandse namen — nooit meer technische namen in rapporten
+// ─── CONDITION LABELS ─────────────────────────────────────────────────────────
+
 const conditionLabels: Record<string, string> = {
   chronic_fatigue: "Chronische Vermoeidheid",
   digestive_issues: "Spijsverteringsproblemen",
@@ -35,234 +32,93 @@ function getConditionName(conditionType: string): string {
   return conditionLabels[conditionType] || conditionType;
 }
 
-// Helper to safely parse JSON array fields from MySQL
+// ─── KENNISBANK HELPER ────────────────────────────────────────────────────────
+
+function getKnowledgeForCondition(conditionType: string): string {
+  const conditionKeyMap: Record<string, string> = {
+    chronic_fatigue: "chronische_vermoeidheid",
+    digestive_issues: "spijsverterings_problemen",
+    solk: "solk",
+    auto_immuun: "auto_immuun_gerelateerde_klachten",
+    alk: "alk",
+  };
+
+  const key = conditionKeyMap[conditionType];
+  const data = knowledgeBase?.conditions_merged?.conditions?.[key];
+
+  if (!data) return "";
+
+  return `
+## KENNISBANK: ${getConditionName(conditionType).toUpperCase()}
+
+### Oorzaken
+${data.oorzaken?.map((o: string) => `- ${o}`).join("\n") || ""}
+
+### Mechanismen & Interventies
+${JSON.stringify(data.mechanismen, null, 2)}
+
+### Coaching Protocol
+${JSON.stringify(data.coaching_protocol, null, 2)}
+`;
+}
+
+// ─── PARSE HELPERS ────────────────────────────────────────────────────────────
+
 function parseArrayField(field: any): string[] {
   if (Array.isArray(field)) return field;
-  if (typeof field === 'string') {
+  if (typeof field === "string") {
     try { return JSON.parse(field); } catch { return []; }
   }
   return [];
 }
 
+// ─── ROUTER ───────────────────────────────────────────────────────────────────
+
 export const anamnesisRouter = router({
+
   submit: protectedProcedure
     .input(
       z.object({
         conditionType: z.string().min(1),
-        responses: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null(), z.undefined()])).optional().default({}),
+        responses: z.record(
+          z.string(),
+          z.union([z.string(), z.number(), z.boolean(), z.null(), z.undefined()])
+        ).optional().default({}),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const mutationStartTime = Date.now();
       const startTime = Date.now();
-      console.log(`[Rapport] Submit mutation started`);
-      
-      const anamnesisStart = Date.now();
-      const anamnesisResult = await saveAnamnesis(
-        ctx.user.id,
-        input.conditionType,
-        input.responses
-      );
-      console.log(`[Rapport] Anamnesis saved in ${Date.now() - anamnesisStart}ms`);
-
-      const llmStart = Date.now();
-      const inzichtRapport = await generateInzichtRapport(
-        input.conditionType,
-        input.responses,
-        ctx.user.name || "Patiënt"
-      );
-      console.log(`[Rapport] LLM response received in ${Date.now() - llmStart}ms`);
-
-      const insertedAnamnesisId = Array.isArray(anamnesisResult) && anamnesisResult.length > 0 ? anamnesisResult[0].id : 1;
-
-      const conditionName = getConditionName(input.conditionType);
-
-      await saveReport(ctx.user.id, insertedAnamnesisId, {
-        reportType: "inzicht_rapport",
-        title: `Holistische Gezondheidsanalyse - ${conditionName}`,
-        content: inzichtRapport.content,
-        summary: inzichtRapport.summary,
-        keyInsights: inzichtRapport.keyInsights,
-        recommendations: inzichtRapport.recommendations,
-        protocols: inzichtRapport.protocols,
-        scientificReferences: inzichtRapport.scientificReferences,
-      });
-
-      // Haal het echte rapport ID op
-      const db = await getDb();
-      let insertedReportId = 0;
-      if (db) {
-        const latestReport = await db.select().from(reports)
-          .where(eq(reports.userId, ctx.user.id))
-          .orderBy(desc(reports.id))
-          .limit(1);
-        insertedReportId = latestReport[0]?.id ?? 0;
-      }
-
-      console.log(`[Rapport] Report saved with ID: ${insertedReportId}, total time so far: ${Date.now() - startTime}ms`);
-      
-      const origin = (ctx.req.headers.origin as string) || "https://ai.holistischadviseur.nl";
-      const emailStart = Date.now();
-      console.log(`[Rapport] Starting email send with PDF generation...`);
-      sendReportEmails({
-        patientName: ctx.user.name || "Patiënt",
-        patientEmail: ctx.user.email || "",
-        conditionType: input.conditionType,
-        reportType: "inzicht_rapport",
-        reportId: insertedReportId,
-        reportData: {
-          title: `Holistische Gezondheidsanalyse - ${conditionName}`,
-          content: inzichtRapport.content,
-          summary: inzichtRapport.summary,
-          keyInsights: inzichtRapport.keyInsights,
-          recommendations: inzichtRapport.recommendations,
-          protocols: inzichtRapport.protocols,
-          scientificReferences: inzichtRapport.scientificReferences,
-        },
-        reportUrl: `${origin}/rapport`,
-      }).then(() => {
-        console.log(`[Rapport] Email sent successfully in ${Date.now() - emailStart}ms`);
-      }).catch(err => {
-        console.warn(`[Rapport] Email send failed after ${Date.now() - emailStart}ms:`, err);
-      });
+      console.log(`[Rapport] Submit mutation started — condition: ${input.conditionType}`);
 
       try {
-        const conditionLabel = getConditionName(input.conditionType);
-        await notifyOwner({
-          title: `🆕 Nieuw Inzicht Rapport: ${conditionLabel}`,
-          content: `📋 Patiënt: ${ctx.user.name || "Onbekend"} (${ctx.user.email || "geen email"})
-📌 Klacht: ${conditionLabel}
-📅 Datum: ${new Date().toLocaleString("nl-NL")}
+        // STAP 1: Sla anamnese op
+        console.log(`[Rapport] STAP 1: Anamnese opslaan...`);
+        const anamnesisResult = await saveAnamnesis(
+          ctx.user.id,
+          input.conditionType,
+          input.responses
+        );
+        console.log(`[Rapport] STAP 1 OK in ${Date.now() - startTime}ms`);
 
-📝 Samenvatting:
-${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
-
-📧 E-mail met PDF verstuurd naar eigenaar en patiënt`,
-        });
-      } catch (notifError) {
-        console.warn("[Notify] Failed to notify owner:", notifError);
-      }
-
-      const mutationEndTime = Date.now();
-      console.log(`[Rapport] Submit mutation completed in ${mutationEndTime - mutationStartTime}ms`);
-      
-      return {
-        success: true,
-        message: "Anamnesis ingediend en rapport gegenereerd",
-      };
-    }),
-
-  getReports: protectedProcedure
-    .query(async ({ ctx }) => {
-      const reports = await getUserReports(ctx.user.id);
-      
-      return reports.map((report: any) => {
-        let content = report.content || "";
-        let summary = report.summary || "";
-        let keyInsights = parseArrayField(report.keyInsights);
-        let recommendations = parseArrayField(report.recommendations);
-        let protocols = parseArrayField(report.protocols);
-        let scientificReferences = parseArrayField(report.scientificReferences);
-        
-        if (typeof content === 'string' && (content.startsWith('{') || content.startsWith('['))) {
-          try {
-            const parsed = JSON.parse(content);
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              content = parsed.content || content;
-              summary = summary || parsed.summary || "";
-              if (!keyInsights.length) keyInsights = parseArrayField(parsed.keyInsights);
-              if (!recommendations.length) recommendations = parseArrayField(parsed.recommendations);
-              if (!protocols.length) protocols = parseArrayField(parsed.protocols);
-              if (!scientificReferences.length) scientificReferences = parseArrayField(parsed.scientificReferences);
-            }
-          } catch {
-            // content is not JSON, use as-is
-          }
-        }
-        
-        return {
-          ...report,
-          content,
-          summary,
-          keyInsights,
-          recommendations,
-          protocols,
-          scientificReferences,
-        };
-      });
-    }),
-
-  deleteReport: protectedProcedure
-    .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      const existing = await db.select().from(reports)
-        .where(and(eq(reports.id, input.id), eq(reports.userId, ctx.user.id)))
-        .limit(1);
-
-      if (!existing.length) throw new Error("Rapport niet gevonden");
-
-      await db.delete(reports).where(eq(reports.id, input.id));
-      return { success: true };
-    }),
-
-  regenerateLatestReport: protectedProcedure
-    .mutation(async ({ ctx }) => {
-      const mutationId = Math.random().toString(36).substring(7);
-      const mutationStartTime = Date.now();
-      
-      console.log(`\n${'='.repeat(80)}`);
-      console.log(`[RAPPORT-${mutationId}] ⏱️ REGENERATE MUTATION START`);
-      console.log(`[RAPPORT-${mutationId}] User: ${ctx.user.id} | Email: ${ctx.user.email}`);
-      console.log(`[RAPPORT-${mutationId}] Timestamp: ${new Date().toISOString()}`);
-      console.log(`${'='.repeat(80)}\n`);
-      
-      try {
-        const step1Start = Date.now();
-        console.log(`[RAPPORT-${mutationId}] STEP 1: Connecting to database...`);
-        const db = await getDb();
-        if (!db) throw new Error("Database not available");
-        console.log(`[RAPPORT-${mutationId}] ✓ Step 1 completed in ${Date.now() - step1Start}ms\n`);
-
-        const step2Start = Date.now();
-        console.log(`[RAPPORT-${mutationId}] STEP 2: Fetching latest anamnesis...`);
-        const latestAnamnesis = await db.select().from(anamnesis)
-          .where(eq(anamnesis.userId, ctx.user.id))
-          .orderBy(desc(anamnesis.id))
-          .limit(1);
-        console.log(`[RAPPORT-${mutationId}] ✓ Step 2 completed in ${Date.now() - step2Start}ms`);
-        console.log(`[RAPPORT-${mutationId}] Found ${latestAnamnesis.length} anamnesis records\n`);
-
-        if (!latestAnamnesis.length) {
-          console.error(`[RAPPORT-${mutationId}] ❌ ERROR: No anamnesis found`);
-          throw new Error("Geen anamnese gevonden. Vul eerst de anamnese in.");
-        }
-
-        const anamnesisData = latestAnamnesis[0];
-        const conditionName = getConditionName(anamnesisData.conditionType);
-        console.log(`[RAPPORT-${mutationId}] Condition: ${conditionName}, ID: ${anamnesisData.id}\n`);
-
-        const step3Start = Date.now();
-        console.log(`[RAPPORT-${mutationId}] STEP 3: Deleting old reports...`);
-        await db.delete(reports).where(eq(reports.userId, ctx.user.id));
-        console.log(`[RAPPORT-${mutationId}] ✓ Step 3 completed in ${Date.now() - step3Start}ms\n`);
-
-        const step4Start = Date.now();
-        console.log(`[RAPPORT-${mutationId}] STEP 4: Generating report via LLM...`);
+        // STAP 2: Genereer rapport via LLM
+        console.log(`[Rapport] STAP 2: Rapport genereren via LLM...`);
         const inzichtRapport = await generateInzichtRapport(
-          anamnesisData.conditionType,
-          (typeof anamnesisData.responses === 'string' ? JSON.parse(anamnesisData.responses) : anamnesisData.responses as Record<string, any>) || {},
+          input.conditionType,
+          input.responses,
           ctx.user.name || "Patiënt"
         );
-        const step4Duration = Date.now() - step4Start;
-        console.log(`[RAPPORT-${mutationId}] ✓ Step 4 completed in ${step4Duration}ms`);
-        console.log(`[RAPPORT-${mutationId}] Content length: ${inzichtRapport.content?.length || 0} chars\n`);
+        console.log(`[Rapport] STAP 2 OK — lengte: ${inzichtRapport.content?.length} in ${Date.now() - startTime}ms`);
 
-        const step5Start = Date.now();
-        console.log(`[RAPPORT-${mutationId}] STEP 5: Saving report to database...`);
-        await saveReport(ctx.user.id, anamnesisData.id, {
+        // STAP 3: Sla rapport op
+        console.log(`[Rapport] STAP 3: Rapport opslaan...`);
+        const insertedAnamnesisId =
+          Array.isArray(anamnesisResult) && anamnesisResult.length > 0
+            ? anamnesisResult[0].id
+            : 1;
+
+        const conditionName = getConditionName(input.conditionType);
+
+        await saveReport(ctx.user.id, insertedAnamnesisId, {
           reportType: "inzicht_rapport",
           title: `Holistische Gezondheidsanalyse - ${conditionName}`,
           content: inzichtRapport.content,
@@ -272,48 +128,32 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
           protocols: inzichtRapport.protocols,
           scientificReferences: inzichtRapport.scientificReferences,
         });
-        const step5Duration = Date.now() - step5Start;
+        console.log(`[Rapport] STAP 3 OK in ${Date.now() - startTime}ms`);
 
-        const latestReport = await db.select().from(reports)
-          .where(eq(reports.userId, ctx.user.id))
-          .orderBy(desc(reports.id))
-          .limit(1);
-        const insertedId = latestReport[0]?.id ?? 0;
-
-        console.log(`[RAPPORT-${mutationId}] ✓ Step 5 completed in ${step5Duration}ms`);
-        console.log(`[RAPPORT-${mutationId}] Report ID: ${insertedId}\n`);
-
-        const pdfStep5Start = Date.now();
-        console.log(`[RAPPORT-${mutationId}] STEP 5.5: Generating and storing PDF...`);
-        const pdfUrl = await generateAndStorePDF(insertedId, {
-          title: `Holistische Gezondheidsanalyse - ${conditionName}`,
-          content: inzichtRapport.content,
-          summary: inzichtRapport.summary,
-          keyInsights: inzichtRapport.keyInsights,
-          recommendations: inzichtRapport.recommendations,
-          protocols: inzichtRapport.protocols,
-          scientificReferences: inzichtRapport.scientificReferences,
-          reportType: "inzicht_rapport",
-          conditionType: anamnesisData.conditionType,
-          patientName: ctx.user.name || "Patiënt",
-        }, ctx.user.id);
-        const pdfStep5Duration = Date.now() - pdfStep5Start;
-        if (pdfUrl) {
-          console.log(`[RAPPORT-${mutationId}] ✓ Step 5.5 completed in ${pdfStep5Duration}ms, PDF opgeslagen`);
-        } else {
-          console.warn(`[RAPPORT-${mutationId}] ⚠️ Step 5.5 failed in ${pdfStep5Duration}ms - PDF generation failed`);
+        // STAP 4: Haal rapport ID op
+        const db = await getDb();
+        let insertedReportId = 0;
+        if (db) {
+          const latestReport = await db
+            .select()
+            .from(reports)
+            .where(eq(reports.userId, ctx.user.id))
+            .orderBy(desc(reports.id))
+            .limit(1);
+          insertedReportId = latestReport[0]?.id ?? 0;
         }
+        console.log(`[Rapport] Rapport ID: ${insertedReportId}`);
 
-        const origin = (ctx.req.headers.origin as string) || "https://ai.holistischadviseur.nl";
-        const emailStart = Date.now();
-        console.log(`[RAPPORT-${mutationId}] STEP 6: Triggering email send (non-blocking)...\n`);
-        
+        // STAP 5: Email (non-blocking)
+        const origin =
+          (ctx.req.headers.origin as string) || "https://ai.holistischadviseur.nl";
+
         sendReportEmails({
           patientName: ctx.user.name || "Patiënt",
           patientEmail: ctx.user.email || "",
-          conditionType: anamnesisData.conditionType,
+          conditionType: input.conditionType,
           reportType: "inzicht_rapport",
-          reportId: insertedId,
+          reportId: insertedReportId,
           reportData: {
             title: `Holistische Gezondheidsanalyse - ${conditionName}`,
             content: inzichtRapport.content,
@@ -324,23 +164,214 @@ ${inzichtRapport.summary?.substring(0, 300) || "Geen samenvatting"}
             scientificReferences: inzichtRapport.scientificReferences,
           },
           reportUrl: `${origin}/rapport`,
-        }).then(() => {
-          console.log(`[RAPPORT-${mutationId}] ✓ Background: Email sent in ${Date.now() - emailStart}ms`);
-        }).catch(err => {
-          console.warn(`[RAPPORT-${mutationId}] ⚠️ Background: Email failed in ${Date.now() - emailStart}ms:`, err?.message);
-        });
+        }).catch((err) =>
+          console.warn(`[Rapport] Email mislukt:`, err?.message)
+        );
 
-        const totalTime = Date.now() - mutationStartTime;
-        console.log(`[RAPPORT-${mutationId}] ✅ MUTATION COMPLETE — Total: ${totalTime}ms\n`);
+        // STAP 6: Notificatie eigenaar (non-blocking)
+        notifyOwner({
+          title: `🆕 Nieuw Rapport: ${getConditionName(input.conditionType)}`,
+          content: `👤 ${ctx.user.name || "Onbekend"} (${ctx.user.email || "geen email"})
+📌 ${getConditionName(input.conditionType)}
+📅 ${new Date().toLocaleString("nl-NL")}
+📝 ${inzichtRapport.summary?.substring(0, 200) || "Geen samenvatting"}`,
+        }).catch((err) => console.warn("[Notify] Mislukt:", err));
 
-        return { success: true, message: "Rapport opnieuw gegenereerd", timing: { llm: step4Duration, save: step5Duration, total: totalTime } };
-      } catch (error: any) {
-        const errorTime = Date.now() - mutationStartTime;
-        console.error(`[RAPPORT-${mutationId}] ❌ ERROR AT ${errorTime}ms: ${error?.message || String(error)}`);
-        throw error;
+        console.log(`[Rapport] ✅ Volledig afgerond in ${Date.now() - startTime}ms`);
+
+        return {
+          success: true,
+          message: "Anamnesis ingediend en rapport gegenereerd",
+        };
+
+      } catch (err: any) {
+        console.error(`[Rapport] ❌ CRASH op submit na ${Date.now() - startTime}ms:`, err?.message || String(err));
+        console.error(`[Rapport] ❌ STACK:`, err?.stack?.split("\n").slice(0, 6).join("\n"));
+        throw new Error(err?.message || "Server fout bij verwerken anamnese");
       }
     }),
+
+  getReports: protectedProcedure.query(async ({ ctx }) => {
+    const reportsData = await getUserReports(ctx.user.id);
+
+    return reportsData.map((report: any) => {
+      let content = report.content || "";
+      let summary = report.summary || "";
+      let keyInsights = parseArrayField(report.keyInsights);
+      let recommendations = parseArrayField(report.recommendations);
+      let protocols = report.protocols;
+      let scientificReferences = parseArrayField(report.scientificReferences);
+
+      if (typeof protocols === "string") {
+        try { protocols = JSON.parse(protocols); } catch { protocols = {}; }
+      }
+
+      if (
+        typeof content === "string" &&
+        (content.startsWith("{") || content.startsWith("["))
+      ) {
+        try {
+          const parsed = JSON.parse(content);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            content = parsed.content || content;
+            summary = summary || parsed.summary || "";
+            if (!keyInsights.length) keyInsights = parseArrayField(parsed.keyInsights);
+            if (!recommendations.length) recommendations = parseArrayField(parsed.recommendations);
+            if (!scientificReferences.length) scientificReferences = parseArrayField(parsed.scientificReferences);
+          }
+        } catch { /* gebruik origineel */ }
+      }
+
+      return {
+        ...report,
+        content,
+        summary,
+        keyInsights,
+        recommendations,
+        protocols,
+        scientificReferences,
+      };
+    });
+  }),
+
+  deleteReport: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const existing = await db
+        .select()
+        .from(reports)
+        .where(and(eq(reports.id, input.id), eq(reports.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing.length) throw new Error("Rapport niet gevonden");
+
+      await db.delete(reports).where(eq(reports.id, input.id));
+      return { success: true };
+    }),
+
+  regenerateLatestReport: protectedProcedure.mutation(async ({ ctx }) => {
+    const mutationId = Math.random().toString(36).substring(7);
+    const startTime = Date.now();
+
+    console.log(`[RAPPORT-${mutationId}] ▶ REGENERATE START — User: ${ctx.user.id}`);
+
+    try {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const latestAnamnesis = await db
+        .select()
+        .from(anamnesis)
+        .where(eq(anamnesis.userId, ctx.user.id))
+        .orderBy(desc(anamnesis.id))
+        .limit(1);
+
+      if (!latestAnamnesis.length) {
+        throw new Error("Geen anamnese gevonden. Vul eerst de anamnese in.");
+      }
+
+      const anamnesisData = latestAnamnesis[0];
+      const conditionName = getConditionName(anamnesisData.conditionType);
+      console.log(`[RAPPORT-${mutationId}] Conditie: ${conditionName}`);
+
+      await db.delete(reports).where(eq(reports.userId, ctx.user.id));
+      console.log(`[RAPPORT-${mutationId}] Oude rapporten verwijderd`);
+
+      const parsedResponses =
+        typeof anamnesisData.responses === "string"
+          ? JSON.parse(anamnesisData.responses)
+          : (anamnesisData.responses as Record<string, any>) || {};
+
+      const llmStart = Date.now();
+      const inzichtRapport = await generateInzichtRapport(
+        anamnesisData.conditionType,
+        parsedResponses,
+        ctx.user.name || "Patiënt"
+      );
+      console.log(`[RAPPORT-${mutationId}] LLM klaar in ${Date.now() - llmStart}ms`);
+
+      await saveReport(ctx.user.id, anamnesisData.id, {
+        reportType: "inzicht_rapport",
+        title: `Holistische Gezondheidsanalyse - ${conditionName}`,
+        content: inzichtRapport.content,
+        summary: inzichtRapport.summary,
+        keyInsights: inzichtRapport.keyInsights,
+        recommendations: inzichtRapport.recommendations,
+        protocols: inzichtRapport.protocols,
+        scientificReferences: inzichtRapport.scientificReferences,
+      });
+
+      const latestReport = await db
+        .select()
+        .from(reports)
+        .where(eq(reports.userId, ctx.user.id))
+        .orderBy(desc(reports.id))
+        .limit(1);
+      const insertedId = latestReport[0]?.id ?? 0;
+      console.log(`[RAPPORT-${mutationId}] Opgeslagen met ID: ${insertedId}`);
+
+      // PDF genereren (non-blocking)
+      generateAndStorePDF(
+        insertedId,
+        {
+          title: `Holistische Gezondheidsanalyse - ${conditionName}`,
+          content: inzichtRapport.content,
+          summary: inzichtRapport.summary,
+          keyInsights: inzichtRapport.keyInsights,
+          recommendations: inzichtRapport.recommendations,
+          protocols: inzichtRapport.protocols,
+          scientificReferences: inzichtRapport.scientificReferences,
+          reportType: "inzicht_rapport",
+          conditionType: anamnesisData.conditionType,
+          patientName: ctx.user.name || "Patiënt",
+        },
+        ctx.user.id
+      ).catch((err) => console.warn(`[RAPPORT-${mutationId}] PDF mislukt:`, err?.message));
+
+      // Email (non-blocking)
+      const origin =
+        (ctx.req.headers.origin as string) || "https://ai.holistischadviseur.nl";
+
+      sendReportEmails({
+        patientName: ctx.user.name || "Patiënt",
+        patientEmail: ctx.user.email || "",
+        conditionType: anamnesisData.conditionType,
+        reportType: "inzicht_rapport",
+        reportId: insertedId,
+        reportData: {
+          title: `Holistische Gezondheidsanalyse - ${conditionName}`,
+          content: inzichtRapport.content,
+          summary: inzichtRapport.summary,
+          keyInsights: inzichtRapport.keyInsights,
+          recommendations: inzichtRapport.recommendations,
+          protocols: inzichtRapport.protocols,
+          scientificReferences: inzichtRapport.scientificReferences,
+        },
+        reportUrl: `${origin}/rapport`,
+      }).catch((err) =>
+        console.warn(`[RAPPORT-${mutationId}] Email mislukt:`, err?.message)
+      );
+
+      console.log(`[RAPPORT-${mutationId}] ✅ Klaar in ${Date.now() - startTime}ms`);
+
+      return {
+        success: true,
+        message: "Rapport opnieuw gegenereerd",
+        timing: { total: Date.now() - startTime },
+      };
+
+    } catch (error: any) {
+      console.error(`[RAPPORT-${mutationId}] ❌ FOUT na ${Date.now() - startTime}ms:`, error?.message);
+      console.error(`[RAPPORT-${mutationId}] STACK:`, error?.stack?.split("\n").slice(0, 5).join("\n"));
+      throw error;
+    }
+  }),
 });
+
+// ─── RAPPORT GENERATIE ────────────────────────────────────────────────────────
 
 async function generateInzichtRapport(
   conditionType: string,
@@ -349,50 +380,16 @@ async function generateInzichtRapport(
 ) {
   const conditionName = getConditionName(conditionType);
   const conditionKnowledge = getConditionSpecificKnowledge(conditionType);
-  
+  const kennisbankSectie = getKnowledgeForCondition(conditionType);
+
   const responseLines = Object.entries(responses)
-    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .filter(([, v]) => v !== undefined && v !== null && v !== "")
     .map(([k, v]) => `- ${k}: ${v}`)
-    .join('\n');
+    .join("\n");
 
-  const rawSymptomInputs: string[] = Object.values(responses)
-    .filter((v): v is string => typeof v === 'string' && v.trim().length > 2)
-    .flatMap(v => v.split(/[,;.\n]+/).map(s => s.trim()).filter(s => s.length > 2));
-
-  const rawNormalized = normalizeInput(rawSymptomInputs);
-  const normalized = filterByConfidence(rawNormalized, 0.60);
-
-  const highConfidenceList = normalized.high_confidence_symptoms.length > 0
-    ? normalized.high_confidence_symptoms
-        .sort((a, b) => b.confidence - a.confidence)
-        .map(s => `${s.standard} (confidence: ${s.confidence.toFixed(2)})`)
-        .join(', ')
-    : 'geen high-confidence symptomen';
-
-  const lowConfidenceList = normalized.low_confidence_symptoms.length > 0
-    ? normalized.low_confidence_symptoms
-        .sort((a, b) => b.confidence - a.confidence)
-        .map(s => `${s.standard} (confidence: ${s.confidence.toFixed(2)}) [LOW_CONFIDENCE]`)
-        .join(', ')
-    : '';
-
-  const activeClusters = normalized.clusters.length > 0
-    ? normalized.clusters
-        .map(c => `${c.cluster} (score: ${c.score.toFixed(2)}, symptomen: ${c.symptoms.join(', ')})`)
-        .join('\n  ')
-    : 'geen clusters actief';
-
-  const unrecognizedNote = normalized.unrecognized.length > 0
-    ? `Niet-herkende invoer (vraag door): ${normalized.unrecognized.join(', ')}`
-    : '';
-
-  console.log(`[Normalization] total_confidence: ${normalized.total_confidence}, symptoms: ${normalized.symptoms.length}, clusters: ${normalized.clusters.length}`);
+  console.log(`[Rapport] LLM aanroepen voor: ${conditionName}`);
 
   try {
-    const startTime = Date.now();
-    console.log(`[Rapport] Starting generateInzichtRapport for ${conditionName}`);
-    
-    const llmStartTime = Date.now();
     const llmResponse = await invokeLLM({
       messages: [
         {
@@ -411,39 +408,26 @@ ${AI_KNOWLEDGE_BASE}
 
 ${conditionKnowledge}
 
+${kennisbankSectie}
+
 ⚠️ TAALREGEL: Gebruik NOOIT technische variabelenamen zoals "digestive_issues", "chronic_fatigue", "solk", "alk", "auto_immuun" in de tekst. Gebruik ALTIJD de Nederlandse naam: "${conditionName}".
 
-Je schrijft UITSLUITEND lopende tekst in alinea's. NOOIT JSON, NOOIT lijsten met komma's, NOOIT haakjes of aanhalingstekens als structuur. Alleen gewone Nederlandse zinnen in alinea's.`,
+Je schrijft UITSLUITEND lopende tekst in alinea's. NOOIT JSON. Alleen gewone Nederlandse zinnen met kopjes.`,
         },
         {
           role: "user",
-          content: `Schrijf een persoonlijke holistische analyse (gratis inzicht rapport) voor ${userName} met klachten rondom ${conditionName}.
-
-⚠️ BELANGRIJK: Gebruik de naam "${conditionName}" in de tekst. Schrijf NOOIT "digestive_issues", "chronic_fatigue", "auto_immuun" of andere technische namen.
+          content: `Schrijf een persoonlijke holistische analyse voor ${userName} met klachten rondom ${conditionName}.
 
 Antwoorden van de patiënt:
-${responseLines || 'Geen specifieke antwoorden opgegeven'}
-
-── GENORMALISEERDE SYMPTOMEN ──
-HIGH-CONFIDENCE symptomen:
-${highConfidenceList}
-
-${lowConfidenceList ? `RUWE SIGNALEN (low-confidence):
-${lowConfidenceList}
-
-` : ''}Actieve clusters:
-  ${activeClusters}
-${unrecognizedNote ? `\n${unrecognizedNote}` : ''}
-Totale signaalsterkte: ${normalized.total_confidence.toFixed(2)}
-──────────────────────────────
+${responseLines || "Geen specifieke antwoorden opgegeven"}
 
 Schrijf het rapport in EXACT deze structuur:
 
 **HERKENNING**
-Maak de patiënt zich gezien en begrepen voelen. Beschrijf wat jij herkent in hun klachten. Persoonlijk, warm, valideer hun ervaringen.
+Maak de patiënt zich gezien en begrepen voelen. Persoonlijk, warm, valideer hun ervaringen.
 
 **DE LOGICA**
-Leg uit WAAROM dit in hun lichaam gebeurt. Toon de correlaties en verbindingen. Maak het inzichtelijk.
+Leg uit WAAROM dit in hun lichaam gebeurt. Toon correlaties en verbindingen.
 
 **EERSTE INZICHTEN**
 Geef 2-3 specifieke inzichten die zij waarschijnlijk nog niet hebben gehoord.
@@ -454,51 +438,49 @@ Wat gebeurt er als niets verandert? Maak duidelijk waarom actie nodig is.
 **CALL TO ACTION**
 Eindig met: "Dit is slechts het begin. Het volledige 6-maanden herstelplan bevat maand-voor-maand instructies, voeding & supplementen, leefstijlprotocollen, en aanbevolen producten & diensten. Klaar om je gezondheid terug te nemen?"
 
-Gebruik de naam ${userName}. Schrijf warm, persoonlijk en wetenschappelijk onderbouwd. ALLEEN gewone alinea's met duidelijke kopjes, geen JSON, geen lijsten.
+Gebruik de naam ${userName}. Schrijf warm, persoonlijk en wetenschappelijk onderbouwd.
 
-⚠️ DISCLAIMER: Begin je rapport met deze disclaimer:
-"Dit rapport is geen medisch advies en kan geen medische diagnose vervangen. Dit is een holistische analyse ter ondersteuning van je gezondheidsreis. Raadpleeg altijd een gekwalificeerde medische professional voor diagnose en behandeling."`,
+⚠️ Begin met deze disclaimer:
+"Dit rapport is geen medisch advies en kan geen medische diagnose vervangen. Raadpleeg altijd een gekwalificeerde medische professional."`,
         },
       ],
     });
 
-    const llmEndTime = Date.now();
-    console.log(`[Rapport] LLM response received in ${llmEndTime - llmStartTime}ms`);
-    
     let finalContent = llmResponse.choices[0]?.message?.content;
-    
-    if (!finalContent || typeof finalContent !== 'string' || finalContent.trim().length < 50) {
-      throw new Error('LLM returned empty or too-short content');
+
+    if (!finalContent || typeof finalContent !== "string" || finalContent.trim().length < 50) {
+      throw new Error("LLM gaf lege of te korte response");
     }
-    
-    finalContent = finalContent.trim();
-    
-    if (finalContent.startsWith('{') || finalContent.startsWith('[')) {
-      console.error('[Report] ERROR: LLM returned JSON instead of text!');
-      throw new Error('LLM returned JSON instead of plain text');
+
+    finalContent = finalContent
+      .trim()
+      .replace(/^```[\w]*\n?/gm, "")
+      .replace(/^```$/gm, "")
+      .trim();
+
+    if (finalContent.startsWith("{") || finalContent.startsWith("[")) {
+      throw new Error("LLM gaf JSON terug in plaats van tekst");
     }
-    
-    finalContent = finalContent.replace(/^```[\w]*\n?/gm, '').replace(/^```$/gm, '').trim();
-    
-    console.log('[Report] SUCCESS - content length:', finalContent.length);
-    
-    const structuredData = getDefaultStructuredData(conditionType, userName);
-    
+
+    console.log(`[Rapport] ✅ LLM content ontvangen — ${finalContent.length} tekens`);
+
     return {
       content: finalContent,
-      ...structuredData,
+      ...getDefaultStructuredData(conditionType, userName),
     };
-    
+
   } catch (error) {
-    console.error('[Report] Error generating report, using fallback:', error);
+    console.error("[Rapport] LLM fout, fallback wordt gebruikt:", error);
     return getFallbackReport(conditionType, userName);
   }
 }
 
+// ─── DEFAULT STRUCTURED DATA ──────────────────────────────────────────────────
+
 function getDefaultStructuredData(conditionType: string, userName: string) {
   const conditionMap: Record<string, any> = {
     chronic_fatigue: {
-      summary: `${userName} ervaart chronische vermoeidheid die verband houdt met meerdere factoren: slaapkwaliteit, darmgezondheid, stressniveau en energiebalans.`,
+      summary: `${userName} ervaart chronische vermoeidheid die verband houdt met slaapkwaliteit, darmgezondheid, stressniveau en energiebalans.`,
       keyInsights: [
         "Chronische vermoeidheid heeft vrijwel altijd meerdere onderliggende oorzaken tegelijk",
         "De darm-brein as speelt een cruciale rol bij energieproductie en herstel",
@@ -517,18 +499,18 @@ function getDefaultStructuredData(conditionType: string, userName: string) {
         ],
         supplements: [
           "Magnesium glycinaat 400mg voor het slapen — ondersteunt slaapkwaliteit en energieproductie",
-          "Vitamine B-complex (B1, B6, B12) 's ochtends — essentieel voor mitochondriale functie",
+          "Vitamine B-complex 's ochtends — essentieel voor mitochondriale functie",
           "CoQ10 200mg bij het ontbijt — direct brandstof voor de mitochondriën",
         ],
         lifestyle: [
-          "Stel vaste slaap- en waaktijden in — ook in het weekend (23:00 - 07:00 als richtlijn)",
-          "Bouw dagelijkse beweging op: begin met 15 minuten wandelen, verhoog elke week",
-          "Verminder schermtijd na 21:00 — blauw licht verstoort melatonineaanmaak",
+          "Vaste slaap- en waaktijden — ook in het weekend",
+          "Bouw beweging op: begin met 15 minuten wandelen, verhoog elke week",
+          "Verminder schermtijd na 21:00",
         ],
         mentalPractices: [
-          "Start elke ochtend met 5 minuten bewuste ademhaling (4 tellen in, 4 tellen uit)",
-          "Voer een dagelijks energiedagboek bij: noteer wat energie geeft en kost",
-          "Oefen de 'body scan' meditatie voor het slapen — 10 minuten via een app",
+          "5 minuten bewuste ademhaling elke ochtend",
+          "Dagelijks energiedagboek bijhouden",
+          "Body scan meditatie voor het slapen",
         ],
       },
       scientificReferences: [
@@ -537,127 +519,127 @@ function getDefaultStructuredData(conditionType: string, userName: string) {
       ],
     },
     digestive_issues: {
-      summary: `${userName} ervaart spijsverteringsproblemen die samenhangen met de darm-brein as, het microbioom en leefstijlfactoren zoals stress en voeding.`,
+      summary: `${userName} ervaart spijsverteringsproblemen die samenhangen met de darm-brein as, het microbioom en leefstijlfactoren.`,
       keyInsights: [
         "70% van het immuunsysteem bevindt zich in de darmen",
-        "Stress via de HPA-as heeft directe invloed op de darmbeweging en het microbioom",
+        "Stress heeft directe invloed op de darmbeweging en het microbioom",
         "Voeding is de meest directe manier om het microbioom te herstellen",
       ],
       recommendations: [
-        "Start met het elimineren van gluten en zuivel gedurende 4 weken",
+        "Start met elimineren van gluten en zuivel gedurende 4 weken",
         "Voeg gefermenteerde voeding toe: kefir, zuurkool, kimchi",
         "Eet langzaam en bewust, kauw elke hap minimaal 20 keer",
       ],
       protocols: {
         nutrition: [
-          "Week 1-4 eliminatiefase (4R Remove): verwijder gluten, zuivel, suiker en bewerkte voeding",
-          "Week 5-8 opbouwfase (4R Reinoculate): introduceer kefir, zuurkool, kimchi en yoghurt",
-          "Week 9-12 reparatiefase (4R Repair): voeg L-glutamine, zink en collageen toe aan de voeding",
+          "Week 1-4 eliminatiefase: verwijder gluten, zuivel, suiker en bewerkte voeding",
+          "Week 5-8 opbouwfase: introduceer kefir, zuurkool, kimchi en yoghurt",
+          "Week 9-12 reparatiefase: voeg L-glutamine, zink en collageen toe",
         ],
         supplements: [
-          "Probiotica multi-strain 25 miljard CFU — neem 30 minuten voor het ontbijt",
-          "L-glutamine 5g per dag — herstelt de darmwandbarrière en vermindert ontstekingen",
-          "Spijsverteringsenzymen bij elke maaltijd — ondersteunt de vertering en nutriëntenopname",
+          "Probiotica multi-strain 25 miljard CFU — 30 minuten voor het ontbijt",
+          "L-glutamine 5g per dag — herstelt de darmwandbarrière",
+          "Spijsverteringsenzymen bij elke maaltijd",
         ],
         lifestyle: [
-          "Eet op vaste tijden — het circadiaans ritme van de darmen is net zo belangrijk als slaap",
-          "Bewuste maaltijden: geen schermen, kauw 20 keer per hap, eet langzaam",
-          "Dagelijks 20-30 minuten lichte beweging na de maaltijd — stimuleert de darmbeweging",
+          "Eet op vaste tijden",
+          "Geen schermen tijdens maaltijden",
+          "Dagelijks 20-30 minuten lichte beweging na de maaltijd",
         ],
         mentalPractices: [
-          "Diepe buikademhaling voor elke maaltijd — activeert het parasympathisch zenuwstelsel voor betere spijsvertering",
-          "Stressmanagement dagboek: noteer stressmomenten en de impact op je buikklachten",
-          "Progressieve spierontspanning voor het slapen — vermindert nachtelijke darmklachten",
+          "Diepe buikademhaling voor elke maaltijd",
+          "Stressmanagement dagboek",
+          "Progressieve spierontspanning voor het slapen",
         ],
       },
       scientificReferences: [
-        "Mayer, E.A. (2011). Gut feelings: the emerging biology of gut-brain communication. Nature Reviews Neuroscience.",
-        "Sonnenburg, J.L. & Bäckhed, F. (2016). Diet-microbiota interactions as moderators of human metabolism. Nature.",
+        "Mayer, E.A. (2011). Gut feelings. Nature Reviews Neuroscience.",
+        "Sonnenburg, J.L. & Bäckhed, F. (2016). Diet-microbiota interactions. Nature.",
       ],
     },
     solk: {
-      summary: `${userName} ervaart lichamelijke klachten zonder duidelijke organische oorzaak (SOLK), waarbij de verbinding tussen lichaam en geest centraal staat.`,
+      summary: `${userName} ervaart lichamelijke klachten zonder duidelijke organische oorzaak, waarbij de verbinding tussen lichaam en geest centraal staat.`,
       keyInsights: [
         "SOLK klachten zijn reëel en hebben een neurobiologische basis",
-        "Het zenuwstelsel speelt een centrale rol bij de verwerking van lichamelijke signalen",
+        "Het zenuwstelsel speelt een centrale rol bij lichamelijke signaalverwerking",
         "Herstel vraagt om een geïntegreerde aanpak van lichaam én geest",
       ],
       recommendations: [
         "Start met dagelijkse ademhalingsoefeningen (4-7-8 techniek)",
-        "Bouw lichamelijke activiteit geleidelijk op (graded activity)",
+        "Bouw lichamelijke activiteit geleidelijk op",
         "Onderzoek de verbinding tussen emoties en lichamelijke klachten",
       ],
       protocols: {
         nutrition: [
-          "Week 1-4: elimineer ontstekingsbevorderende voeding — suiker, bewerkte producten, alcohol",
-          "Week 5-8: voeg ontstekingsremmende voeding toe — vette vis, kurkuma, gember, groene groenten",
-          "Week 9-12: introduceer adaptogene kruiden — ashwagandha en heilig basilicum voor stressregulatie",
+          "Week 1-4: elimineer ontstekingsbevorderende voeding",
+          "Week 5-8: voeg ontstekingsremmende voeding toe",
+          "Week 9-12: introduceer adaptogene kruiden",
         ],
         supplements: [
-          "Magnesium tauraat 300mg voor het slapen — ondersteunt zenuwstelsel en spierfunctie",
-          "Omega-3 vetzuren 2g per dag — vermindert systemische ontsteking en ondersteunt het brein",
-          "Vitamine D3 2000-4000IU bij het ontbijt — essentieel voor immuunregulatie en stemming",
+          "Magnesium tauraat 300mg voor het slapen",
+          "Omega-3 vetzuren 2g per dag",
+          "Vitamine D3 2000-4000IU bij het ontbijt",
         ],
         lifestyle: [
-          "Graded activity: begin met 10 minuten bewegen per dag, verhoog wekelijks met 5 minuten",
-          "Vaste dagstructuur met rust- en activiteitsmomenten — voorspelbaarheid kalmeert het zenuwstelsel",
-          "Slaaphygiëne optimaliseren: donkere kamer, vaste bedtijden, geen cafeïne na 14:00",
+          "Begin met 10 minuten bewegen per dag",
+          "Vaste dagstructuur met rust- en activiteitsmomenten",
+          "Slaaphygiëne optimaliseren",
         ],
         mentalPractices: [
-          "Body scan meditatie dagelijks 15 minuten — ontwikkelt bewustzijn van lichaamssignalen",
-          "Journaling: schrijf dagelijks over lichaamssensaties en bijbehorende emoties",
-          "Psycho-educatie: leer de verbinding tussen stress en lichamelijke klachten begrijpen",
+          "Body scan meditatie dagelijks 15 minuten",
+          "Journaling over lichaamssensaties en emoties",
+          "Psycho-educatie over stress en lichamelijke klachten",
         ],
       },
       scientificReferences: [
-        "Henningsen, P. et al. (2018). Management of functional somatic syndromes and bodily distress. Psychotherapy and Psychosomatics.",
+        "Henningsen, P. et al. (2018). Management of functional somatic syndromes. Psychotherapy and Psychosomatics.",
         "van Dessel, N. et al. (2014). Non-pharmacological interventions for somatoform disorders. Cochrane Database.",
       ],
     },
     auto_immuun: {
-      summary: `${userName} ervaart auto-immuun gerelateerde klachten waarbij het immuunsysteem ontregeld is en een geïntegreerde aanpak van voeding, suppletie en leefstijl essentieel is.`,
+      summary: `${userName} ervaart auto-immuun gerelateerde klachten waarbij het immuunsysteem ontregeld is en darmherstel de basis vormt.`,
       keyInsights: [
-        "Auto-immuunklachten ontstaan door een combinatie van genetische aanleg, darmpermeabiliteit en omgevingsfactoren",
-        "De darmen zijn de poort van het immuunsysteem — darmherstel is de basis van elk auto-immuunprotocol",
-        "Histamine-intolerantie en voedingstriggers spelen bij veel auto-immuunaandoeningen een onderschatte rol",
+        "Auto-immuunklachten ontstaan door genetische aanleg, darmpermeabiliteit en omgevingsfactoren",
+        "De darmen zijn de poort van het immuunsysteem — darmherstel is essentieel",
+        "Histamine-intolerantie speelt bij veel auto-immuunaandoeningen een onderschatte rol",
       ],
       recommendations: [
-        "Start met een eliminatiedieet om voedingstriggers te identificeren (gluten, zuivel, nachtschade)",
+        "Start met een eliminatiedieet om voedingstriggers te identificeren",
         "Ondersteun de darmwand met L-glutamine, zink en collageen",
         "Verlaag ontstekingslast via omega-3, vitamine D3 en kurkuma",
       ],
       protocols: {
         nutrition: [
-          "Week 1-6 eliminatiefase: verwijder gluten, zuivel, nachtschadeplanten, suiker en alcohol",
-          "Week 7-12 herïntroductiefase: voeg één voedingsgroep per week terug en observeer reacties",
-          "Onderhoudsfase: mediterraan of AIP (Autoimmune Protocol) dieet als langetermijnbasis",
+          "Week 1-6: elimineer gluten, zuivel, nachtschadeplanten, suiker en alcohol",
+          "Week 7-12: herïntroductie — één voedingsgroep per week",
+          "Onderhoudsfase: mediterraan of AIP dieet",
         ],
         supplements: [
-          "Vitamine D3 4000IU + K2 100mcg bij het ontbijt — cruciaal voor immuunmodulatie",
-          "Omega-3 vetzuren 2-3g per dag — krachtig ontstekingsremmend en immuunregulerend",
-          "L-glutamine 5g per dag op nuchtere maag — herstelt de darmwandintegriteit",
+          "Vitamine D3 4000IU + K2 100mcg bij het ontbijt",
+          "Omega-3 vetzuren 2-3g per dag",
+          "L-glutamine 5g per dag op nuchtere maag",
         ],
         lifestyle: [
-          "Stressreductie is niet optioneel — cortisol verergert auto-immuunactiviteit direct",
-          "Slaap minimaal 8 uur — immuunherstel vindt uitsluitend plaats tijdens diepe slaap",
-          "Vermijd toxische belasting: parfums, synthetische schoonmaakmiddelen en plastics waar mogelijk",
+          "Stressreductie is niet optioneel — cortisol verergert auto-immuunactiviteit",
+          "Minimaal 8 uur slaap",
+          "Vermijd toxische belasting waar mogelijk",
         ],
         mentalPractices: [
-          "Dagelijkse meditatie of ademhalingsoefeningen — verlaagt cortisol en kalmeert het immuunsysteem",
-          "Journaling over symptomen en triggers — helpt patronen te herkennen en leefstijl bij te sturen",
-          "Acceptatiegerichte therapie (ACT) — ondersteunt omgaan met chronische klachten zonder strijd",
+          "Dagelijkse meditatie of ademhalingsoefeningen",
+          "Journaling over symptomen en triggers",
+          "Acceptatiegerichte therapie (ACT)",
         ],
       },
       scientificReferences: [
         "Fasano, A. (2012). Leaky gut and autoimmune diseases. Clinical Reviews in Allergy & Immunology.",
-        "Vojdani, A. (2014). A potential link between environmental triggers and autoimmunity. Autoimmune Diseases.",
+        "Vojdani, A. (2014). Environmental triggers and autoimmunity. Autoimmune Diseases.",
       ],
     },
     alk: {
-      summary: `${userName} ervaart ALK (Aspecifieke Lichamelijke Klachten) waarbij de combinatie van beweging, houding, stress en leefstijl de sleutel is tot herstel.`,
+      summary: `${userName} ervaart ALK waarbij beweging, houding, stress en leefstijl de sleutel zijn tot herstel.`,
       keyInsights: [
         "Aspecifieke lichamelijke klachten hebben zelden één oorzaak",
-        "Beweging is bewezen effectiever dan rust bij aspecifieke klachten",
+        "Beweging is bewezen effectiever dan rust",
         "Stress en slaaptekort versterken pijnperceptie significant",
       ],
       recommendations: [
@@ -667,59 +649,61 @@ function getDefaultStructuredData(conditionType: string, userName: string) {
       ],
       protocols: {
         nutrition: [
-          "Week 1-4: elimineer pro-inflammatoire voeding — suiker, fastfood, transvetten",
-          "Week 5-8: voeg anti-inflammatoire voeding toe — mediterraan dieet als basis",
-          "Week 9-12: gerichte suppletie op basis van eventuele tekorten in bloedwaarden",
+          "Week 1-4: elimineer pro-inflammatoire voeding",
+          "Week 5-8: mediterraan dieet als basis",
+          "Week 9-12: gerichte suppletie op basis van bloedwaarden",
         ],
         supplements: [
-          "Magnesium malaat 400mg — ondersteunt spierherstel en vermindert pijngevoeligheid",
-          "Curcumine met piperine 500mg — krachtig anti-inflammatoir zonder maagbijwerkingen",
-          "Vitamine D3 + K2 bij het ontbijt — ondersteunt botgezondheid en spierfunctie",
+          "Magnesium malaat 400mg",
+          "Curcumine met piperine 500mg",
+          "Vitamine D3 + K2 bij het ontbijt",
         ],
         lifestyle: [
-          "Graduele bewegingsopbouw: start met 15 minuten wandelen, elke week 5 minuten toevoegen",
-          "Ergonomische aanpassingen: werkplek, slaaphouding en schoeisel controleren",
-          "Wisselend zitten en staan tijdens werk — maximaal 45 minuten aaneengesloten zitten",
+          "Start met 15 minuten wandelen, elke week 5 minuten toevoegen",
+          "Ergonomische aanpassingen op de werkplek",
+          "Maximaal 45 minuten aaneengesloten zitten",
         ],
         mentalPractices: [
-          "Pijndagboek bijhouden — inzicht in triggers en patroonherkenning",
-          "Ontspanningstechnieken: progressieve spierontspanning 2x per dag",
-          "Acceptatiegerichte aanpak — leer omgaan met klachten zonder catastroferen",
+          "Pijndagboek bijhouden",
+          "Progressieve spierontspanning 2x per dag",
+          "Acceptatiegerichte aanpak",
         ],
       },
       scientificReferences: [
-        "Hayden, J.A. et al. (2005). Exercise therapy for treatment of non-specific low back pain. Cochrane Database.",
+        "Hayden, J.A. et al. (2005). Exercise therapy for non-specific low back pain. Cochrane Database.",
         "Waddell, G. (2004). The Back Pain Revolution. Churchill Livingstone.",
       ],
     },
   };
-  
+
   return conditionMap[conditionType] || conditionMap.digestive_issues;
 }
+
+// ─── FALLBACK RAPPORT ─────────────────────────────────────────────────────────
 
 function getFallbackReport(conditionType: string, userName: string) {
   const conditionName = getConditionName(conditionType);
 
   return {
-    content: `Dit rapport is geen medisch advies en kan geen medische diagnose vervangen. Dit is een holistische analyse ter ondersteuning van je gezondheidsreis. Raadpleeg altijd een gekwalificeerde medische professional voor diagnose en behandeling.
+    content: `Dit rapport is geen medisch advies en kan geen medische diagnose vervangen. Raadpleeg altijd een gekwalificeerde medische professional.
 
 **HERKENNING**
 
 Beste ${userName},
 
-Bedankt voor het invullen van de anamnese. Op basis van je antwoorden over ${conditionName} hebben we een eerste analyse gemaakt. Je klachten wijzen op een patroon dat we vaker zien bij mensen met vergelijkbare symptomen.
+Op basis van je antwoorden over ${conditionName} hebben we een eerste analyse gemaakt. Je klachten wijzen op een patroon dat we vaker zien bij mensen met vergelijkbare ervaringen.
 
 **DE LOGICA**
 
-De onderliggende oorzaken zijn vaak een combinatie van leefstijlfactoren, voeding, stress en slaap. Een holistische aanpak richt zich op het herstel van balans in het lichaam door meerdere factoren tegelijk aan te pakken.
+De onderliggende oorzaken zijn vaak een combinatie van leefstijlfactoren, voeding, stress en slaap. Een holistische aanpak richt zich op het herstel van balans door meerdere factoren tegelijk aan te pakken.
 
 **EERSTE INZICHTEN**
 
-Het lichaam geeft met klachten een signaal dat er iets uit balans is. Symptomen zijn geen vijand, maar informatie. De sleutel is om de onderliggende oorzaak aan te pakken, niet alleen het symptoom te onderdrukken.
+Het lichaam geeft met klachten een signaal dat er iets uit balans is. Symptomen zijn geen vijand, maar informatie. De sleutel is de onderliggende oorzaak aanpakken, niet alleen het symptoom onderdrukken.
 
 **WAT DIT BETEKENT**
 
-Zonder aanpak kunnen klachten verergeren en leiden tot meer complexe gezondheidsproblemen. Met de juiste aanpak is herstel goed mogelijk.
+Zonder aanpak kunnen klachten verergeren. Met de juiste aanpak is herstel goed mogelijk.
 
 **CALL TO ACTION**
 
