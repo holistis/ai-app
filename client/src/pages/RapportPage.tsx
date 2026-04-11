@@ -1,3 +1,4 @@
+import PreviewRapport from "@/components/PreviewRapport";
 // FILE: client/src/pages/RapportPage.tsx
 // VERBETERD: visuele hiërarchie, gezondheidsscores, premium preview lock,
 // insight-cards, 6-maanden tijdlijn preview, strak design
