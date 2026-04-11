@@ -1,8 +1,16 @@
-import React from "react";
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Legend } from "recharts";
-import { Lock, Zap, Heart, Brain, Leaf, Flame } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+// FILE: client/src/components/PreviewRapport.tsx
+// Gebouwd door Manus AI, verbeterd door Claude:
+// - Premium donkere hero (ipv pastel)
+// - Conditionele maand-inhoud op basis van conditionType
+// - Betere mobile layout insight cards
+// - Sterkere CTA sectie
+
+import React, { useEffect, useState } from "react";
+import {
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  Radar, ResponsiveContainer, Legend,
+} from "recharts";
+import { Lightbulb, TrendingUp, Heart, Lock, Sparkles } from "lucide-react";
 
 interface PreviewRapportProps {
   userName: string;
@@ -10,30 +18,45 @@ interface PreviewRapportProps {
   summary: string;
   keyInsights: string[];
   responses: Record<string, any>;
-  onViewFullReport: () => void;
+  onBuy: () => void;
 }
-
-const CONDITION_COLORS: Record<string, { bg: string; text: string; badge: string }> = {
-  chronic_fatigue: { bg: "from-amber-50 to-orange-50", text: "text-amber-700", badge: "bg-amber-100 text-amber-800" },
-  digestive_issues: { bg: "from-green-50 to-emerald-50", text: "text-green-700", badge: "bg-green-100 text-green-800" },
-  solk: { bg: "from-purple-50 to-pink-50", text: "text-purple-700", badge: "bg-purple-100 text-purple-800" },
-  auto_immuun: { bg: "from-red-50 to-rose-50", text: "text-red-700", badge: "bg-red-100 text-red-800" },
-  alk: { bg: "from-blue-50 to-cyan-50", text: "text-blue-700", badge: "bg-blue-100 text-blue-800" },
-};
 
 const CONDITION_LABELS: Record<string, string> = {
   chronic_fatigue: "Chronische Vermoeidheid",
-  digestive_issues: "Spijsverterings­problemen",
+  digestive_issues: "Spijsverteringsproblemen",
   solk: "SOLK",
   auto_immuun: "Auto-Immuun Klachten",
   alk: "ALK — Aspecifieke Klachten",
 };
 
-const INSIGHT_ICONS = [
-  { icon: Zap, color: "text-amber-500" },
-  { icon: Heart, color: "text-rose-500" },
-  { icon: Brain, color: "text-indigo-500" },
-];
+// Conditionele maand-inhoud op basis van ziektebeeld
+const MAAND_CONTENT: Record<string, { m1: string[]; m2: string[] }> = {
+  chronic_fatigue: {
+    m1: ["Eliminatiedieet starten (suiker, gluten)", "Slaap-waakritme instellen", "Magnesium + B-complex starten"],
+    m2: ["Darmgezondheid herstellen", "Beweging opbouwen (15 min/dag)", "Circadiaans ritme optimaliseren"],
+  },
+  digestive_issues: {
+    m1: ["4R Remove: gluten & zuivel elimineren", "Probiotica multi-strain starten", "Bewust eten (20x kauwen)"],
+    m2: ["4R Reinoculate: kefir & zuurkool", "L-glutamine darmwandherstel", "Spijsverteringsenzymen toevoegen"],
+  },
+  solk: {
+    m1: ["Lichaam-geest verbinding verkennen", "Graded activity starten (10 min)", "Ademhalingsoefeningen 4-7-8"],
+    m2: ["Body scan meditatie dagelijks", "Journaling over lichaamssignalen", "Stress-trigger identificatie"],
+  },
+  auto_immuun: {
+    m1: ["AIP eliminatiedieet starten", "Vitamine D3 + K2 suppletie", "Ontstekingsbronnen identificeren"],
+    m2: ["Darmpermeabiliteit herstellen", "Omega-3 protocol opbouwen", "Histamine-triggers vermijden"],
+  },
+  alk: {
+    m1: ["Pro-inflammatoire voeding elimineren", "Dagelijks 15 min wandelen", "Ergonomie werkplek aanpassen"],
+    m2: ["Mediterraan dieet als basis", "Beweging uitbreiden naar 30 min", "Magnesium malaat starten"],
+  },
+};
+
+const FALLBACK_MAAND = {
+  m1: ["Voedingsaanpassingen invoeren", "Slaapschema optimaliseren", "Basis supplementen starten"],
+  m2: ["Protocol verfijnen", "Bewegingsplan opbouwen", "Stressreductie verdiepen"],
+};
 
 export default function PreviewRapport({
   userName,
@@ -41,154 +64,215 @@ export default function PreviewRapport({
   summary,
   keyInsights,
   responses,
-  onViewFullReport,
+  onBuy,
 }: PreviewRapportProps) {
-  // Prepare radar data
+  const [radarAnimated, setRadarAnimated] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setRadarAnimated(true), 300);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Bereken radarscores
   const radarData = [
-    { name: "Slaap", value: responses.sleep_quality || 5 },
-    { name: "Voeding", value: responses.digestion || 5 },
-    { name: "Stress", value: Math.max(0, 10 - (responses.stress_level || 5)) }, // Inverted
-    { name: "Beweging", value: Math.min(10, (responses.exercise || 0) * 2) },
-    { name: "Mentaal", value: responses.mental_clarity || 5 },
-    { name: "Emotioneel", value: responses.emotional_balance || 5 },
+    { name: "Slaap", value: Math.min(10, Math.max(1, parseFloat(responses.sleep_quality) || 5)) },
+    { name: "Voeding", value: Math.min(10, Math.max(1, parseFloat(responses.digestion) || 5)) },
+    { name: "Stressbalans", value: Math.min(10, Math.max(1, 10 - (parseFloat(responses.stress_level) || 5))) },
+    { name: "Beweging", value: Math.min(10, Math.max(1, (parseFloat(responses.exercise) || 2) * 1.5)) },
+    { name: "Mentaal", value: Math.min(10, Math.max(1, parseFloat(responses.mental_clarity) || 5)) },
+    { name: "Energie", value: Math.min(10, Math.max(1, parseFloat(responses.emotional_balance) || 5)) },
   ];
 
-  const colors = CONDITION_COLORS[conditionType] || CONDITION_COLORS.chronic_fatigue;
   const conditionLabel = CONDITION_LABELS[conditionType] || "Gezondheidsanalyse";
+  const maandContent = MAAND_CONTENT[conditionType] || FALLBACK_MAAND;
+  const firstName = userName?.split(" ")[0] || userName || "jou";
+  const today = new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
+
+  const insightConfig = [
+    { Icon: Lightbulb, iconColor: "text-amber-500", borderColor: "border-l-amber-400", bg: "bg-amber-50" },
+    { Icon: TrendingUp, iconColor: "text-indigo-500", borderColor: "border-l-indigo-400", bg: "bg-indigo-50" },
+    { Icon: Heart, iconColor: "text-rose-500", borderColor: "border-l-rose-400", bg: "bg-rose-50" },
+  ];
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${colors.bg} py-8 px-4`}>
-      <div className="max-w-5xl mx-auto space-y-8">
-        {/* HERO SECTION */}
-        <div className="text-center space-y-4">
-          <div className={`inline-block px-4 py-2 rounded-full font-semibold text-sm ${colors.badge}`}>
-            {conditionLabel}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 py-10 px-4">
+      <div className="max-w-3xl mx-auto space-y-6">
+
+        {/* ── HERO ── */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-indigo-600 to-violet-700 text-white shadow-2xl">
+          <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/5 rounded-full" />
+          <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-white/5 rounded-full" />
+          <div className="absolute top-1/2 right-1/4 w-32 h-32 bg-white/5 rounded-full" />
+
+          <div className="relative px-8 py-10 md:px-12 md:py-14">
+            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-xs font-bold mb-5">
+              <Sparkles className="w-3 h-3" />
+              {conditionLabel}
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold leading-tight mb-2">
+              Holistische Analyse<br />voor{" "}
+              <span className="text-indigo-200">{firstName}</span>
+            </h1>
+            <p className="text-indigo-300 text-sm">Gegenereerd op {today}</p>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
-            Jouw Holistische Gezondheidsanalyse,{" "}
-            <span className="text-indigo-600">{userName}</span>
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Gegenereerd op {new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}
-          </p>
         </div>
 
-        {/* RADAR CHART SECTION */}
-        <Card className="bg-white shadow-xl border-0 p-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900">Jouw Gezondheidsprofiel</h2>
-          <ResponsiveContainer width="100%" height={400}>
-            <RadarChart data={radarData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+        {/* ── RADARDIAGRAM ── */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10">
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Jouw Gezondheidsprofiel</h2>
+          <p className="text-sm text-gray-500 mb-6">Gebaseerd op jouw anamnese-antwoorden · Schaal 1–10</p>
+          <ResponsiveContainer width="100%" height={320}>
+            <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
               <PolarGrid stroke="#e5e7eb" />
-              <PolarAngleAxis dataKey="name" tick={{ fill: "#666", fontSize: 12 }} />
-              <PolarRadiusAxis angle={90} domain={[0, 10]} tick={{ fill: "#999", fontSize: 11 }} />
+              <PolarAngleAxis
+                dataKey="name"
+                tick={{ fill: "#555", fontSize: 12, fontWeight: 600 }}
+              />
+              <PolarRadiusAxis
+                angle={90}
+                domain={[0, 10]}
+                tick={{ fill: "#aaa", fontSize: 10 }}
+                tickCount={6}
+              />
               <Radar
-                name="Gezondheid"
+                name="Jouw score"
                 dataKey="value"
                 stroke="#4f46e5"
                 fill="#4f46e5"
-                fillOpacity={0.6}
+                fillOpacity={0.55}
+                strokeWidth={2}
               />
-              <Legend />
+              <Legend
+                wrapperStyle={{ fontSize: "12px", color: "#666", paddingTop: "12px" }}
+              />
             </RadarChart>
           </ResponsiveContainer>
-          <p className="text-center text-sm text-gray-600 mt-4">
-            Schaal 1-10: Hoe hoger, hoe beter. Stress is omgekeerd: laag is beter.
-          </p>
-        </Card>
-
-        {/* INSIGHTS CARDS */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900">Eerste Inzichten</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            {keyInsights.slice(0, 3).map((insight, idx) => {
-              const IconComponent = INSIGHT_ICONS[idx]?.icon || Zap;
-              const iconColor = INSIGHT_ICONS[idx]?.color || "text-indigo-500";
-              return (
-                <Card
-                  key={idx}
-                  className="bg-white border-l-4 border-indigo-500 shadow-md hover:shadow-lg transition-shadow p-6"
-                >
-                  <div className="flex gap-4">
-                    <IconComponent className={`w-6 h-6 flex-shrink-0 ${iconColor}`} />
-                    <div>
-                      <h3 className="font-bold text-gray-900 mb-2">Inzicht {idx + 1}</h3>
-                      <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
         </div>
 
-        {/* SUMMARY SECTION */}
-        {summary && (
-          <Card className="bg-white shadow-lg border-0 p-8">
-            <h2 className="text-2xl font-bold mb-4 text-gray-900">Samenvatting</h2>
-            <div className="prose prose-indigo max-w-none">
-              <p className="text-gray-700 leading-relaxed italic">{summary}</p>
+        {/* ── INZICHTEN ── */}
+        {keyInsights.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10">
+            <h2 className="text-xl font-bold text-gray-900 mb-5">Eerste Inzichten</h2>
+            <div className="space-y-3">
+              {keyInsights.slice(0, 3).map((insight, idx) => {
+                const { Icon, iconColor, borderColor, bg } = insightConfig[idx] || insightConfig[0];
+                return (
+                  <div
+                    key={idx}
+                    className={`border-l-4 ${borderColor} ${bg} rounded-r-2xl p-5`}
+                  >
+                    <div className="flex gap-3">
+                      <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${iconColor}`} />
+                      <p className="text-gray-700 text-sm leading-relaxed">{insight}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </Card>
+          </div>
         )}
 
-        {/* LOCKED SECTION */}
-        <div className="relative">
-          <Card className="bg-gradient-to-br from-gray-100 to-gray-50 shadow-xl border-0 p-8 overflow-hidden">
-            {/* Blurred background content */}
-            <div className="blur-sm opacity-40 pointer-events-none">
-              <h3 className="text-xl font-bold mb-4 text-gray-900">Jouw 6-Maanden Herstelplan</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white p-4 rounded-lg">
-                  <p className="font-semibold text-gray-900">Maand 1-2: Stabilisatie</p>
-                  <p className="text-sm text-gray-600 mt-2">Fundamenten leggen...</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg">
-                  <p className="font-semibold text-gray-900">Maand 3-4: Herstel</p>
-                  <p className="text-sm text-gray-600 mt-2">Dieper genezen...</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg">
-                  <p className="font-semibold text-gray-900">Maand 5-6: Optimalisatie</p>
-                  <p className="text-sm text-gray-600 mt-2">Piek bereiken...</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg">
-                  <p className="font-semibold text-gray-900">Protocollen</p>
-                  <p className="text-sm text-gray-600 mt-2">Week-voor-week instructies...</p>
-                </div>
+        {/* ── SAMENVATTING ── */}
+        {summary && (
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-10">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Samenvatting</h2>
+            <p className="text-gray-600 leading-relaxed italic text-sm bg-slate-50 rounded-2xl p-5 border border-slate-100">
+              {summary}
+            </p>
+          </div>
+        )}
+
+        {/* ── 6-MAANDEN PLAN (gedeeltelijk geblokkeerd) ── */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6 md:p-10">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Jouw 6-Maanden Herstelplan</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Maand 1 en 2 zijn direct beschikbaar. Ontgrendel de rest met het volledige rapport.
+            </p>
+
+            {/* Zichtbare maanden */}
+            <div className="grid sm:grid-cols-2 gap-4 mb-4">
+              <div className="bg-indigo-50 rounded-2xl p-5 border border-indigo-100">
+                <div className="text-xs font-bold text-indigo-600 mb-1">MAAND 1</div>
+                <div className="font-semibold text-gray-800 text-sm mb-3">Fundament leggen</div>
+                <ul className="space-y-1.5">
+                  {maandContent.m1.map((item, i) => (
+                    <li key={i} className="text-xs text-gray-600 flex gap-2">
+                      <span className="text-indigo-400 mt-0.5">•</span> {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
+                <div className="text-xs font-bold text-emerald-600 mb-1">MAAND 2</div>
+                <div className="font-semibold text-gray-800 text-sm mb-3">Darmherstel & Opbouw</div>
+                <ul className="space-y-1.5">
+                  {maandContent.m2.map((item, i) => (
+                    <li key={i} className="text-xs text-gray-600 flex gap-2">
+                      <span className="text-emerald-400 mt-0.5">•</span> {item}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 
-            {/* Overlay */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-lg">
-              <Lock className="w-12 h-12 text-indigo-600 mb-4" />
-              <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-                Jouw volledige 6-maanden herstelplan
-              </h3>
-              <p className="text-gray-600 text-center mb-6 max-w-sm">
-                Inclusief week-voor-week instructies, supplementen en protocollen speciaal voor jouw situatie
-              </p>
-              <Button
-                onClick={onViewFullReport}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg"
-              >
-                Bekijk Volledig Rapport
-              </Button>
+            {/* Geblokkeerde maanden */}
+            <div className="relative">
+              <div className="grid sm:grid-cols-2 gap-4 blur-sm pointer-events-none select-none opacity-50">
+                {[
+                  { label: "MAAND 3", color: "violet", title: "Diepgaand herstel" },
+                  { label: "MAAND 4", color: "orange", title: "Energie optimalisatie" },
+                  { label: "MAAND 5", color: "rose", title: "Stabilisatie" },
+                  { label: "MAAND 6", color: "blue", title: "Langetermijn plan" },
+                ].map((m) => (
+                  <div key={m.label} className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                    <div className="text-xs font-bold text-gray-400 mb-1">{m.label}</div>
+                    <div className="font-semibold text-gray-500 text-sm mb-3">{m.title}</div>
+                    <ul className="space-y-1.5">
+                      {["Protocol", "Aanpak", "Resultaat"].map((x, i) => (
+                        <li key={i} className="text-xs text-gray-400">• {x}...</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-md text-sm font-semibold text-gray-600">
+                  <Lock className="w-4 h-4 text-gray-400" />
+                  Ontgrendelen in volledig rapport
+                </div>
+              </div>
             </div>
-          </Card>
+          </div>
+
+          {/* CTA */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 px-8 py-10 text-center text-white">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full" />
+            <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-white/5 rounded-full" />
+            <div className="relative">
+              <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-3 py-1 text-xs font-semibold mb-4">
+                <Sparkles className="w-3 h-3" /> Volledig herstelplan
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Ontgrendel maand 3 t/m 6</h3>
+              <p className="text-indigo-200 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
+                Week-voor-week instructies, persoonlijke supplementen-protocollen,
+                voedingsschema's en wetenschappelijke onderbouwing.
+              </p>
+              <button
+                onClick={onBuy}
+                className="inline-flex items-center gap-2 bg-white text-indigo-700 font-bold px-8 py-3.5 rounded-xl hover:bg-indigo-50 transition-all shadow-lg text-sm"
+              >
+                <Sparkles className="w-4 h-4" />
+                Ontgrendel Volledig Rapport — €34,95
+              </button>
+              <p className="text-indigo-300 text-xs mt-3">
+                Eenmalige betaling · Direct toegang · PDF inbegrepen
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Footer CTA */}
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">
-            Dit is slechts het begin. Het volledige rapport bevat alles wat je nodig hebt om te genezen.
-          </p>
-          <Button
-            onClick={onViewFullReport}
-            size="lg"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
-          >
-            Ontgrendel Volledig Rapport
-          </Button>
-        </div>
       </div>
     </div>
   );
