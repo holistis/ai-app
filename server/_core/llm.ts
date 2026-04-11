@@ -3,23 +3,61 @@ import fs from "fs";
 import path from "path";
 
 // ============================================================
-// KNOWLEDGE BASE — wordt gebruikt in alle AI rapportages
+// AUTOMATISCHE KNOWLEDGE BASE LOADER
+// Laadt ALLE .json bestanden uit de knowledge_base map.
+// Voeg gewoon een nieuw .json bestand toe aan die map
+// en herstart de server — het wordt automatisch meegenomen.
 // ============================================================
-const knowledgeBasePath = path.join(process.cwd(), "knowledge_base/conditions_merged.json");
-export const knowledgeBase = fs.existsSync(knowledgeBasePath)
-  ? JSON.parse(fs.readFileSync(knowledgeBasePath, "utf-8"))
-  : null;
+
+function loadKnowledgeBase(): Record<string, any> {
+  const knowledgeBasePath = path.join(process.cwd(), "knowledge_base");
+  const combined: Record<string, any> = {};
+
+  if (!fs.existsSync(knowledgeBasePath)) {
+    console.warn("[KnowledgeBase] Map niet gevonden:", knowledgeBasePath);
+    return combined;
+  }
+
+  const files = fs.readdirSync(knowledgeBasePath).filter(f => f.endsWith(".json"));
+
+  if (files.length === 0) {
+    console.warn("[KnowledgeBase] Geen JSON bestanden gevonden in:", knowledgeBasePath);
+    return combined;
+  }
+
+  for (const file of files) {
+    const filePath = path.join(knowledgeBasePath, file);
+    try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      const parsed = JSON.parse(content);
+      const key = file.replace(".json", ""); // bestandsnaam zonder extensie
+      combined[key] = parsed;
+      console.log(`[KnowledgeBase] ✅ Geladen: ${file}`);
+    } catch (err) {
+      console.error(`[KnowledgeBase] ❌ Fout bij laden van ${file}:`, err);
+    }
+  }
+
+  console.log(`[KnowledgeBase] Totaal geladen: ${files.length} bestanden`);
+  return combined;
+}
+
+// Wordt één keer geladen bij serverstart
+export const knowledgeBase = loadKnowledgeBase();
 
 // ============================================================
-// SYSTEM PROMPT — de instructies voor de AI
+// SYSTEM PROMPT — automatisch opgebouwd uit alle geladen kennis
 // ============================================================
 export const HOLISTIC_SYSTEM_PROMPT = `
 Je bent een holistische AI gezondheidsadviseur van Holistisch AI Kliniek.
 
 Je werkt altijd conform de onderstaande kennisbank die jouw medische expertise vormt.
+Deze kennisbank is automatisch samengesteld uit alle beschikbare kennisbestanden.
 
 KENNISBANK:
-${knowledgeBase ? JSON.stringify(knowledgeBase, null, 2) : "Kennisbank niet beschikbaar."}
+${Object.keys(knowledgeBase).length > 0
+  ? JSON.stringify(knowledgeBase, null, 2)
+  : "Kennisbank niet beschikbaar."}
 
 JOUW TAAK:
 Op basis van de anamnese van de gebruiker genereer je een persoonlijk, wetenschappelijk onderbouwd rapport in het Nederlands.
@@ -74,7 +112,7 @@ TAAL: Altijd Nederlands.
 LENGTE: Uitgebreid en gedetailleerd — dit is een professioneel rapport.
 
 DISCLAIMER (altijd onderaan toevoegen):
-"⚠️ Dit rapport is uitsluitend informatief en vervangt geen medisch advies. Raadpleeg altijd een gekwalificeerde therapeut of arts voor persoonlijke behandeling. Supplementen zoals Methylene Blue zijn online verkrijgbaar maar dienen gebruikt te worden onder begeleiding van een professional."
+"⚠️ Dit rapport is uitsluitend informatief en vervangt geen medisch advies. Raadpleeg altijd een gekwalificeerde therapeut of arts voor persoonlijke behandeling."
 `;
 
 // ============================================================
