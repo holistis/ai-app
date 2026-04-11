@@ -1,3 +1,5 @@
+// FILE: server/routers/anamnesis.ts
+
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { saveAnamnesis, saveReport, getUserReports, getDb } from "../db";
@@ -25,6 +27,7 @@ const conditionLabels: Record<string, string> = {
   chronic_fatigue: "Chronische Vermoeidheid",
   digestive_issues: "Spijsverteringsproblemen",
   solk: "SOLK (Somatisch Onverklaarbare Lichamelijke Klachten)",
+  auto_immuun: "Auto-Immuun Gerelateerde Klachten",
   alk: "ALK (Aspecifieke Lichamelijke Klachten)",
 };
 
@@ -344,7 +347,6 @@ async function generateInzichtRapport(
   responses: Record<string, any>,
   userName: string
 ) {
-  // ✅ FIX 1: altijd Nederlandse naam gebruiken
   const conditionName = getConditionName(conditionType);
   const conditionKnowledge = getConditionSpecificKnowledge(conditionType);
   
@@ -409,7 +411,7 @@ ${AI_KNOWLEDGE_BASE}
 
 ${conditionKnowledge}
 
-⚠️ TAALREGEL: Gebruik NOOIT technische variabelenamen zoals "digestive_issues", "chronic_fatigue", "solk", "alk" in de tekst. Gebruik ALTIJD de Nederlandse naam: "${conditionName}".
+⚠️ TAALREGEL: Gebruik NOOIT technische variabelenamen zoals "digestive_issues", "chronic_fatigue", "solk", "alk", "auto_immuun" in de tekst. Gebruik ALTIJD de Nederlandse naam: "${conditionName}".
 
 Je schrijft UITSLUITEND lopende tekst in alinea's. NOOIT JSON, NOOIT lijsten met komma's, NOOIT haakjes of aanhalingstekens als structuur. Alleen gewone Nederlandse zinnen in alinea's.`,
         },
@@ -417,7 +419,7 @@ Je schrijft UITSLUITEND lopende tekst in alinea's. NOOIT JSON, NOOIT lijsten met
           role: "user",
           content: `Schrijf een persoonlijke holistische analyse (gratis inzicht rapport) voor ${userName} met klachten rondom ${conditionName}.
 
-⚠️ BELANGRIJK: Gebruik de naam "${conditionName}" in de tekst. Schrijf NOOIT "digestive_issues", "chronic_fatigue" of andere technische namen.
+⚠️ BELANGRIJK: Gebruik de naam "${conditionName}" in de tekst. Schrijf NOOIT "digestive_issues", "chronic_fatigue", "auto_immuun" of andere technische namen.
 
 Antwoorden van de patiënt:
 ${responseLines || 'Geen specifieke antwoorden opgegeven'}
@@ -494,8 +496,6 @@ Gebruik de naam ${userName}. Schrijf warm, persoonlijk en wetenschappelijk onder
 }
 
 function getDefaultStructuredData(conditionType: string, userName: string) {
-  // ✅ FIX 2: protocols zijn nu objecten met named keys (nutrition, supplements, lifestyle, mentalPractices)
-  // zodat de PDF generator ze correct kan weergeven zonder losse 0 en 1
   const conditionMap: Record<string, any> = {
     chronic_fatigue: {
       summary: `${userName} ervaart chronische vermoeidheid die verband houdt met meerdere factoren: slaapkwaliteit, darmgezondheid, stressniveau en energiebalans.`,
@@ -614,6 +614,45 @@ function getDefaultStructuredData(conditionType: string, userName: string) {
         "van Dessel, N. et al. (2014). Non-pharmacological interventions for somatoform disorders. Cochrane Database.",
       ],
     },
+    auto_immuun: {
+      summary: `${userName} ervaart auto-immuun gerelateerde klachten waarbij het immuunsysteem ontregeld is en een geïntegreerde aanpak van voeding, suppletie en leefstijl essentieel is.`,
+      keyInsights: [
+        "Auto-immuunklachten ontstaan door een combinatie van genetische aanleg, darmpermeabiliteit en omgevingsfactoren",
+        "De darmen zijn de poort van het immuunsysteem — darmherstel is de basis van elk auto-immuunprotocol",
+        "Histamine-intolerantie en voedingstriggers spelen bij veel auto-immuunaandoeningen een onderschatte rol",
+      ],
+      recommendations: [
+        "Start met een eliminatiedieet om voedingstriggers te identificeren (gluten, zuivel, nachtschade)",
+        "Ondersteun de darmwand met L-glutamine, zink en collageen",
+        "Verlaag ontstekingslast via omega-3, vitamine D3 en kurkuma",
+      ],
+      protocols: {
+        nutrition: [
+          "Week 1-6 eliminatiefase: verwijder gluten, zuivel, nachtschadeplanten, suiker en alcohol",
+          "Week 7-12 herïntroductiefase: voeg één voedingsgroep per week terug en observeer reacties",
+          "Onderhoudsfase: mediterraan of AIP (Autoimmune Protocol) dieet als langetermijnbasis",
+        ],
+        supplements: [
+          "Vitamine D3 4000IU + K2 100mcg bij het ontbijt — cruciaal voor immuunmodulatie",
+          "Omega-3 vetzuren 2-3g per dag — krachtig ontstekingsremmend en immuunregulerend",
+          "L-glutamine 5g per dag op nuchtere maag — herstelt de darmwandintegriteit",
+        ],
+        lifestyle: [
+          "Stressreductie is niet optioneel — cortisol verergert auto-immuunactiviteit direct",
+          "Slaap minimaal 8 uur — immuunherstel vindt uitsluitend plaats tijdens diepe slaap",
+          "Vermijd toxische belasting: parfums, synthetische schoonmaakmiddelen en plastics waar mogelijk",
+        ],
+        mentalPractices: [
+          "Dagelijkse meditatie of ademhalingsoefeningen — verlaagt cortisol en kalmeert het immuunsysteem",
+          "Journaling over symptomen en triggers — helpt patronen te herkennen en leefstijl bij te sturen",
+          "Acceptatiegerichte therapie (ACT) — ondersteunt omgaan met chronische klachten zonder strijd",
+        ],
+      },
+      scientificReferences: [
+        "Fasano, A. (2012). Leaky gut and autoimmune diseases. Clinical Reviews in Allergy & Immunology.",
+        "Vojdani, A. (2014). A potential link between environmental triggers and autoimmunity. Autoimmune Diseases.",
+      ],
+    },
     alk: {
       summary: `${userName} ervaart ALK (Aspecifieke Lichamelijke Klachten) waarbij de combinatie van beweging, houding, stress en leefstijl de sleutel is tot herstel.`,
       keyInsights: [
@@ -659,7 +698,6 @@ function getDefaultStructuredData(conditionType: string, userName: string) {
 }
 
 function getFallbackReport(conditionType: string, userName: string) {
-  // ✅ FIX 1: Nederlandse naam gebruiken, nooit technische naam
   const conditionName = getConditionName(conditionType);
 
   return {
