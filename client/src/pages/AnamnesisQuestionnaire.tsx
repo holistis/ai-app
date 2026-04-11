@@ -1,3 +1,5 @@
+// FILE: client/src/pages/AnamnesisQuestionnaire.tsx
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,43 +13,61 @@ const STORAGE_KEY = "anamnesis_draft";
 
 const CONDITION_TYPES = [
   { id: "chronic_fatigue", label: "Chronische Vermoeidheid", description: "Aanhoudende moeheid en energiegebrek" },
-  { id: "digestive_issues", label: "Spijsverterings-Problemen", description: "Maag- en darmklachten" },
-  { id: "solk", label: "SOLK", description: "Somatisch Symptoomstoornis met Onverklaarbare Lichamelijke Klachten" },
+  { id: "digestive_issues", label: "Spijsverterings­problemen", description: "Maag- en darmklachten" },
+  { id: "solk", label: "SOLK", description: "Somatisch Onverklaarbare Lichamelijke Klachten" },
+  { id: "auto_immuun", label: "Auto-Immuun Klachten", description: "Immuunsysteem gerelateerde klachten" },
   { id: "alk", label: "ALK", description: "Aspecifieke Lichamelijke Klachten" },
 ];
 
-// Condition-specific extra questions added to the medical section
 const CONDITION_SPECIFIC_QUESTIONS: Record<string, Array<{id: string; label: string; type: string; options?: string[]}>> = {
   chronic_fatigue: [
-    { id: "fatigue_onset", label: "Wanneer begon de vermoeidheid? (bijv. na ziekte, na stress, geleidelijk)", type: "textarea" },
-    { id: "fatigue_pattern", label: "Wanneer ben je het meest vermoeid?", type: "select", options: ["'s Ochtends bij opstaan", "'s Middags", "'s Avonds", "De hele dag door", "Na inspanning"] },
-    { id: "post_exertional", label: "Word je erger na lichamelijke of mentale inspanning?", type: "select", options: ["Ja, altijd", "Soms", "Zelden", "Nee"] },
-    { id: "brain_fog", label: "Heb je last van hersenmist (moeite met concentreren, vergeetachtigheid)?", type: "select", options: ["Ja, ernstig", "Ja, matig", "Soms", "Nee"] },
-    { id: "energy_morning", label: "Hoe is je energieniveau 's ochtends? (1-10)", type: "number" },
-    { id: "caffeine_use", label: "Gebruik je cafeïne om door de dag te komen?", type: "select", options: ["Ja, veel (3+ kopjes)", "Matig (1-2 kopjes)", "Weinig", "Nee"] },
+    { id: "fatigue_onset", label: "Wanneer begon de vermoeidheid? Was er een aanleiding zoals een infectie, stress of trauma?", type: "textarea" },
+    { id: "post_exertional_malaise", label: "Wordt je vermoeidheid erger na lichamelijke of mentale inspanning (Post-Exertional Malaise)?", type: "select", options: ["Ja, altijd", "Soms", "Zelden", "Nee"] },
+    { id: "brain_fog", label: "Heb je last van hersenmist — moeite met concentreren of geheugen?", type: "select", options: ["Ja, ernstig", "Ja, matig", "Soms", "Nee"] },
+    { id: "sleep_restful", label: "Voel je je uitgerust na 8 of meer uur slaap?", type: "select", options: ["Nooit", "Zelden", "Soms", "Meestal wel"] },
+    { id: "temperature_regulation", label: "Heb je problemen met temperatuurregulatie (koude handen/voeten of overmatig zweten)?", type: "select", options: ["Ja, altijd", "Soms", "Zelden", "Nee"] },
+    { id: "orthostatic_intolerance", label: "Word je duizelig als je snel opstaat (orthostatische intolerantie)?", type: "select", options: ["Ja, altijd", "Soms", "Zelden", "Nee"] },
+    { id: "viral_history", label: "Heb je een geschiedenis van virale infecties zoals EBV, CMV, COVID of de ziekte van Lyme?", type: "select", options: ["Ja, bevestigd", "Mogelijk", "Nee", "Weet niet"] },
+    { id: "mold_exposure", label: "Ben je ooit blootgesteld geweest aan schimmel in huis of op het werk?", type: "select", options: ["Ja, zeker", "Mogelijk", "Nee", "Weet niet"] },
   ],
   digestive_issues: [
-    { id: "bowel_frequency", label: "Hoe vaak heb je ontlasting per dag/week?", type: "text" },
-    { id: "stool_type", label: "Hoe is je ontlasting?", type: "select", options: ["Hard/klonterig", "Normaal", "Zacht/los", "Diarree", "Wisselend"] },
+    { id: "main_symptoms", label: "Wat zijn je voornaamste spijsverteringsklachten?", type: "textarea" },
+    { id: "bowel_pattern", label: "Hoe is je ontlasting?", type: "select", options: ["Hard en moeilijk", "Normaal", "Zacht en los", "Diarree", "Wisselend tussen diarree en verstopping"] },
     { id: "bloating", label: "Heb je last van een opgeblazen gevoel?", type: "select", options: ["Ja, altijd", "Na maaltijden", "Soms", "Nee"] },
-    { id: "food_triggers", label: "Welke voedingsmiddelen veroorzaken klachten?", type: "textarea" },
+    { id: "food_triggers", label: "Welke voedingsmiddelen veroorzaken klachten bij jou?", type: "textarea" },
+    { id: "antibiotic_history", label: "Heb je in het verleden meerdere kuren antibiotica gebruikt?", type: "select", options: ["Ja, meerdere kuren", "Ja, één keer", "Nee", "Weet niet"] },
+    { id: "fermented_intake", label: "Eet of drink je gefermenteerde producten zoals kefir, zuurkool of kimchi?", type: "select", options: ["Ja, dagelijks", "Soms", "Zelden", "Nooit"] },
+    { id: "stress_gut_relation", label: "Merk je dat stress je darmklachten verergert?", type: "select", options: ["Ja, duidelijk verband", "Soms", "Geen verband", "Weet niet"] },
     { id: "abdominal_pain", label: "Heb je buikpijn? Beschrijf waar en wanneer.", type: "textarea" },
-    { id: "antibiotics_history", label: "Heb je in het verleden antibiotica gebruikt?", type: "select", options: ["Ja, meerdere kuren", "Ja, één keer", "Nee", "Weet niet"] },
   ],
   solk: [
-    { id: "pain_locations", label: "Waar in je lichaam voel je klachten? (beschrijf alle locaties)", type: "textarea" },
-    { id: "pain_intensity", label: "Hoe ernstig zijn de klachten gemiddeld? (1-10)", type: "number" },
-    { id: "medical_investigations", label: "Welke medische onderzoeken heb je al gehad?", type: "textarea" },
-    { id: "trauma_history", label: "Heb je ingrijpende gebeurtenissen meegemaakt die mogelijk verband houden met je klachten?", type: "select", options: ["Ja, wil ik toelichten", "Misschien", "Nee"] },
+    { id: "symptom_locations", label: "Waar in je lichaam voel je klachten? Beschrijf alle locaties.", type: "textarea" },
+    { id: "symptom_intensity", label: "Hoe ernstig zijn de klachten gemiddeld? (1 = licht, 10 = ondraaglijk)", type: "number" },
+    { id: "medical_tests_done", label: "Welke medische onderzoeken heb je al gehad?", type: "textarea" },
+    { id: "stress_symptoms_relation", label: "Worden je klachten erger bij stress of angst?", type: "select", options: ["Ja, duidelijk", "Soms", "Nee", "Weet niet"] },
+    { id: "anxiety_panic", label: "Heb je last van angst of paniekaanvallen?", type: "select", options: ["Ja, regelmatig", "Soms", "Zelden", "Nooit"] },
+    { id: "sleep_disturbances", label: "Heb je slaapproblemen gerelateerd aan je klachten?", type: "select", options: ["Ja, ernstig", "Matig", "Licht", "Nee"] },
+    { id: "trauma_history", label: "Heb je ingrijpende ervaringen meegemaakt die mogelijk verband houden met je klachten?", type: "select", options: ["Ja, wil ik toelichten", "Mogelijk", "Nee"] },
     { id: "trauma_details", label: "Als je wilt, beschrijf dan kort wat er is gebeurd (optioneel)", type: "textarea" },
-    { id: "impact_daily_life", label: "Hoe beïnvloeden de klachten je dagelijks leven?", type: "textarea" },
+    { id: "relaxation_improves", label: "Verbeteren je klachten bij ontspanning of vermindering van stress?", type: "select", options: ["Ja, duidelijk", "Soms", "Geen effect", "Weet niet"] },
+  ],
+  auto_immuun: [
+    { id: "autoimmune_condition", label: "Welke auto-immuunaandoening heb je of vermoed je?", type: "textarea" },
+    { id: "histamine_symptoms", label: "Heb je last van hoofdpijn, huiduitslag, hartkloppingen of angst na bepaalde voeding?", type: "select", options: ["Ja, regelmatig", "Soms", "Zelden", "Nee"] },
+    { id: "joint_muscle_pain", label: "Heb je gewrichts- of spierpijn?", type: "select", options: ["Ja, ernstig", "Matig", "Licht", "Nee"] },
+    { id: "skin_problems", label: "Heb je huidproblemen zoals eczeem, psoriasis of uitslag?", type: "select", options: ["Ja, ernstig", "Matig", "Licht", "Nee"] },
+    { id: "food_triggers_autoimmune", label: "Welke voedingsmiddelen triggeren je klachten?", type: "textarea" },
+    { id: "vitamin_d_tested", label: "Is je vitamine D niveau ooit gemeten?", type: "select", options: ["Ja, was te laag", "Ja, was normaal", "Ja, was te hoog", "Nooit gemeten"] },
+    { id: "inflammation_markers", label: "Zijn er ontstekingswaarden gemeten in je bloed (CRP, BSE)?", type: "select", options: ["Ja, verhoogd", "Ja, normaal", "Nooit gemeten"] },
+    { id: "mold_chemical_exposure", label: "Ben je blootgesteld aan schimmel of chemicaliën?", type: "select", options: ["Ja, zeker", "Mogelijk", "Nee", "Weet niet"] },
   ],
   alk: [
-    { id: "main_symptoms", label: "Beschrijf al je klachten zo volledig mogelijk", type: "textarea" },
-    { id: "symptom_duration", label: "Hoe lang heb je deze klachten al?", type: "text" },
-    { id: "symptom_pattern", label: "Zijn de klachten constant of wisselend?", type: "select", options: ["Constant", "Wisselend", "In aanvallen", "Seizoensgebonden"] },
-    { id: "lifestyle_changes", label: "Zijn er leefstijlveranderingen die de klachten beïnvloeden?", type: "textarea" },
-    { id: "vitamin_d", label: "Is je vitamine D niveau ooit gemeten?", type: "select", options: ["Ja, was laag", "Ja, was normaal", "Nee, nooit gemeten"] },
+    { id: "main_symptoms_alk", label: "Beschrijf al je klachten zo volledig mogelijk", type: "textarea" },
+    { id: "symptom_duration_alk", label: "Hoe lang heb je deze klachten al?", type: "text" },
+    { id: "symptom_pattern_alk", label: "Zijn de klachten constant of wisselend?", type: "select", options: ["Constant", "Wisselend", "In aanvallen", "Seizoensgebonden"] },
+    { id: "lifestyle_impact", label: "Hoe beïnvloeden de klachten je dagelijks leven?", type: "textarea" },
+    { id: "vitamin_d_alk", label: "Is je vitamine D niveau ooit gemeten?", type: "select", options: ["Ja, was laag", "Ja, was normaal", "Nooit gemeten"] },
+    { id: "previous_treatments_alk", label: "Wat heb je al geprobeerd om beter te worden?", type: "textarea" },
   ],
 };
 
@@ -137,7 +157,6 @@ const QUESTIONNAIRE_SECTIONS = [
   },
 ];
 
-// Returns the IDs of unanswered questions in a section
 function getMissingQuestions(
   section: typeof QUESTIONNAIRE_SECTIONS[0],
   responses: Record<string, any>
@@ -162,7 +181,6 @@ export default function AnamnesisQuestionnaire() {
   const [showErrors, setShowErrors] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
-  // Load saved draft from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -177,7 +195,6 @@ export default function AnamnesisQuestionnaire() {
     setDraftLoaded(true);
   }, []);
 
-  // Save draft to localStorage whenever answers change
   useEffect(() => {
     if (!draftLoaded) return;
     try {
@@ -195,36 +212,30 @@ export default function AnamnesisQuestionnaire() {
     return <div className="flex items-center justify-center min-h-screen">Je moet ingelogd zijn</div>;
   }
 
-  // Build dynamic sections: add condition-specific section after medical section
   const conditionExtraQuestions = conditionType ? (CONDITION_SPECIFIC_QUESTIONS[conditionType] || []) : [];
   const dynamicSections = conditionExtraQuestions.length > 0
     ? [
-        ...QUESTIONNAIRE_SECTIONS.slice(0, -1), // all except last (goals)
+        ...QUESTIONNAIRE_SECTIONS.slice(0, -1),
         {
           id: "condition_specific",
           title: `Specifieke Vragen: ${CONDITION_TYPES.find(c => c.id === conditionType)?.label || conditionType}`,
           questions: conditionExtraQuestions,
         },
-        QUESTIONNAIRE_SECTIONS[QUESTIONNAIRE_SECTIONS.length - 1], // goals last
+        QUESTIONNAIRE_SECTIONS[QUESTIONNAIRE_SECTIONS.length - 1],
       ]
     : QUESTIONNAIRE_SECTIONS;
 
   const progress = ((currentSection + 1) / dynamicSections.length) * 100;
   const currentSectionData = dynamicSections[currentSection];
   const missingInCurrentSection = getMissingQuestions(currentSectionData, responses);
-  const isFirstSectionValid = conditionType !== "" && getMissingQuestions(QUESTIONNAIRE_SECTIONS[0], responses).length === 0;
 
   const handleResponseChange = (questionId: string, value: any) => {
-    setResponses((prev) => ({
-      ...prev,
-      [questionId]: value,
-    }));
+    setResponses((prev) => ({ ...prev, [questionId]: value }));
   };
 
   const handleNext = () => {
     setShowErrors(true);
 
-    // On step 1, also require a condition type
     if (currentSection === 0 && !conditionType) {
       toast.error("Selecteer alstublieft een ziektebeeld voordat je verder gaat");
       return;
@@ -267,7 +278,6 @@ export default function AnamnesisQuestionnaire() {
 
     setIsSubmitting(true);
     try {
-      // Clean responses: remove undefined/null values, convert numbers
       const cleanedResponses: Record<string, string | number | boolean> = {};
       for (const [key, value] of Object.entries(responses)) {
         if (value !== undefined && value !== null && value !== "") {
@@ -278,7 +288,6 @@ export default function AnamnesisQuestionnaire() {
         conditionType,
         responses: cleanedResponses,
       });
-      // Clear the saved draft after successful submission
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
       toast.success("Anamnese ingediend! Je rapport wordt gegenereerd...");
       setLocation("/rapport");
@@ -287,9 +296,7 @@ export default function AnamnesisQuestionnaire() {
       const msg = error?.message || "";
       if (msg.includes("UNAUTHORIZED") || msg.includes("Please login") || msg.includes("10001")) {
         toast.error("Je sessie is verlopen. Log opnieuw in.");
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 2000);
+        setTimeout(() => { window.location.href = "/"; }, 2000);
       } else {
         toast.error(`Er is een fout opgetreden: ${msg || "Probeer het opnieuw"}`);
       }
@@ -306,7 +313,6 @@ export default function AnamnesisQuestionnaire() {
     return false;
   };
 
-  // Show loading overlay while report is being generated
   if (isSubmitting) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center z-50">
@@ -338,14 +344,12 @@ export default function AnamnesisQuestionnaire() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Holistische Anamnese</h1>
           <p className="text-gray-600">Stap {currentSection + 1} van {dynamicSections.length}</p>
           <Progress value={progress} className="mt-4" />
         </div>
 
-        {/* Condition Selection */}
         {currentSection === 0 && (
           <Card className={`p-6 mb-6 ${showErrors && !conditionType ? "border-2 border-red-400" : ""}`}>
             <h2 className="text-xl font-semibold mb-1">Selecteer je ziektebeeld <span className="text-red-500">*</span></h2>
@@ -371,7 +375,6 @@ export default function AnamnesisQuestionnaire() {
           </Card>
         )}
 
-        {/* Questions */}
         <Card className="p-6 mb-6">
           <h2 className="text-xl font-semibold mb-6">{currentSectionData.title}</h2>
           <div className="space-y-6">
@@ -422,9 +425,7 @@ export default function AnamnesisQuestionnaire() {
                     >
                       <option value="">Selecteer...</option>
                       {question.options?.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
+                        <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
                   )}
@@ -437,7 +438,6 @@ export default function AnamnesisQuestionnaire() {
           </div>
         </Card>
 
-        {/* Navigation */}
         <div className="flex gap-4">
           <Button
             onClick={handlePrevious}
