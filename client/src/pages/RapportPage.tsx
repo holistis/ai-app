@@ -552,6 +552,16 @@ export default function RapportPage() {
           </p>
         </div>
 
+        {!isFullReport && !isAdminView && (
+  <PreviewRapport
+    userName={user.name || ""}
+    conditionType={report.conditionType || ""}
+    summary={report.summary}
+    keyInsights={report.keyInsights}
+    responses={report.anamnesisResponses || {}}
+    onBuy={handleBuyFullReport}
+  />
+)}
         {/* ── SAMENVATTING ── */}
         {report.summary && (
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 md:p-8">
