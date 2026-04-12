@@ -659,15 +659,25 @@ export default function AnamnesisQuestionnaire() {
               </div>
             )}
 
-            {/* Terug bij select */}
-            {q.type === "select" && (
-              <button
-                onClick={handlePrev}
-                className="w-full py-3 border-2 border-gray-200 text-gray-500 font-semibold rounded-2xl hover:bg-gray-50 transition text-sm"
-              >
-                ← Vorige vraag
-              </button>
-            )}
+            {/* Navigatie bij select — Volgende zichtbaar als al beantwoord */}
+{q.type === "select" && (
+  <div className="flex gap-3">
+    <button
+      onClick={handlePrev}
+      className="px-5 py-4 border-2 border-gray-200 text-gray-600 font-semibold rounded-2xl hover:bg-gray-50 transition"
+    >
+      ← Terug
+    </button>
+    {currentVal && (
+      <button
+        onClick={handleNext}
+        className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-200"
+      >
+        {currentQ === totalQ - 1 ? "Controleer antwoorden →" : "Volgende →"}
+      </button>
+    )}
+  </div>
+)}
 
             {/* Sla over bij optioneel */}
             {q.optional && q.type !== "select" && (
