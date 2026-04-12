@@ -637,6 +637,11 @@ export default function RapportPage() {
             <FullReportDetails report={report} />
           </div>
         )}
+        <RapportChat
+  reportId={report.id}
+  userName={user.name || ""}
+  conditionType={report.conditionType || ""}
+/>
 
         {/* ── DISCLAIMER ── */}
         <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-700 leading-relaxed">
