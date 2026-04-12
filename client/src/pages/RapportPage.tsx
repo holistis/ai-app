@@ -1,3 +1,4 @@
+import { RapportChat } from "@/components/RapportChat";
 import PreviewRapport from "@/components/PreviewRapport";
 // FILE: client/src/pages/RapportPage.tsx
 // VERBETERD: visuele hiërarchie, gezondheidsscores, premium preview lock,
